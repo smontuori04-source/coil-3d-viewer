@@ -101,80 +101,88 @@ fig.update_layout(
 )
 
 # -------------------------------------------------------------------
-# 🎨 CSS für Layout und Farb-Design
+# 🎨 CSS für Vollbild + dunkles Sidebar-Design
 # -------------------------------------------------------------------
 st.markdown("""
     <style>
-        /* --- Sidebar Layout --- */
+        /* --- Sidebar fixieren + dunkles Design --- */
         section[data-testid="stSidebar"] {
             position: fixed !important;
             top: 0;
             left: 0;
             height: 100vh !important;
             width: 320px !important;
-            background-color: #f8f9fa !important;
-            border-right: 1px solid #ddd !important;
-            padding: 16px !important;
+            background-color: #1e2328 !important;  /* dunkles Blaugrau */
+            border-right: 1px solid #2f343a !important;
+            padding: 18px !important;
+            color: #f2f2f2 !important;
             z-index: 10;
         }
 
-        /* --- Hauptanzeige: Vollbild Plot --- */
-        div[data-testid="stPlotlyChart"] {
-            position: fixed !important;
-            top: 0;
-            left: 320px;
-            right: 0;
-            bottom: 0;
-            height: 100vh !important;
-            width: calc(100vw - 320px) !important;
-            background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            z-index: 5;
+        /* --- Sidebar-Text und Titel --- */
+        section[data-testid="stSidebar"] h1,
+        section[data-testid="stSidebar"] label,
+        section[data-testid="stSidebar"] p {
+            color: #f2f2f2 !important;
         }
 
-        /* --- Block Container (zentriert) --- */
-        .block-container {
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        /* --- Farbanpassung der Slider und Radio Buttons --- */
+        /* --- Slider (rot wie vorher) --- */
         input[type="range"]::-webkit-slider-thumb {
-            background: #e53935 !important; /* klassisches Streamlit-Rot */
+            background: #e53935 !important;
         }
         input[type="range"]::-moz-range-thumb {
             background: #e53935 !important;
         }
-
-        div[role="radiogroup"] label span {
-            color: #222 !important;
-        }
-        div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
-            color: #111 !important;
-        }
-        div[role="radiogroup"] input:checked + div {
-            background-color: #e53935 !important;
-            color: white !important;
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #4b4f56 !important;
         }
 
-        /* --- Schaltflächen / Buttons --- */
-        button[kind="primary"] {
-            background-color: #e53935 !important;
-            color: white !important;
-            border: none !important;
-        }
-        button[kind="primary"]:hover {
-            background-color: #c62828 !important;
-        }
-
-        /* --- Checkboxen --- */
-        input[type="checkbox"] {
+        /* --- Checkbox + RadioButtons --- */
+        input[type="checkbox"], input[type="radio"] {
             accent-color: #e53935 !important;
         }
 
+        /* --- Hauptanzeige rechts: echtes Vollbild --- */
+        div[data-testid="stAppViewContainer"] > div:nth-child(1) {
+            margin-left: 320px !important; /* Platz für Sidebar */
+            height: 100vh !important;
+            width: calc(100vw - 320px) !important;
+            background: #ffffff !important;
+        }
+
+        /* --- 3D-Plot selbst --- */
+        div[data-testid="stPlotlyChart"] {
+            position: absolute !important;
+            top: 0;
+            bottom: 0;
+            left: 320px;
+            right: 0;
+            height: 100vh !important;
+            width: calc(100vw - 320px) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+        }
+
+        /* --- Button-Styling (Blaugrau) --- */
+        button[kind="primary"] {
+            background-color: #2f343a !important;
+            color: #f2f2f2 !important;
+            border: 1px solid #3a4046 !important;
+            border-radius: 4px !important;
+        }
+        button[kind="primary"]:hover {
+            background-color: #40464e !important;
+        }
+
+        /* --- Allgemeine Abstände anpassen --- */
+        .block-container {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
+
 
 # -------------------------------------------------------------------
 # 🧾 ANZEIGE
