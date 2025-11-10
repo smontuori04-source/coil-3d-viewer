@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D Coil im erweiterten Lagerraum", layout="wide")
+st.set_page_config(page_title="3D Coil im neutralen Raum", layout="wide")
 
 st.sidebar.title("Coil Parameter")
 RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
@@ -12,11 +12,11 @@ MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], in
 color_map = {
     "Stahl": "0x999999",
     "Kupfer": "0xb87333",
-    "Aluminium": "0xd0d0d0"
+    "Aluminium": "0xc0c0c0"
 }
 
-st.title("🏭 Coil im größeren Lagerraum (1,5×)")
-st.caption("Kamera, Raum und Licht sind 1,5× skaliert – Coil bleibt realistisch im Zentrum.")
+st.title("🏭 Coil im neutralen Raum (dunkel)")
+st.caption("Dunkler Raum, metallischer Coil, keine weißen Wände – Fokus auf das Objekt.")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -27,7 +27,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #dcdcdc;
+    background: #1a1a1a; /* dunkler Hintergrund */
     width: 100%;
     height: 100%;
   }}
@@ -38,15 +38,13 @@ threejs_html = f"""
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 
 <script>
-const SCALE = 1.5; // Verhältnisfaktor (1.5×)
-
 // --- Szene & Kamera ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf5f5f5);
+scene.background = new THREE.Color(0x111111); // dunkles Grau statt Weiß
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000 * SCALE);
-camera.position.set(2000 * SCALE, 1000 * SCALE, 2000 * SCALE);
-camera.lookAt(0, 500, 0);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
+camera.position.set(2000, 1000, 2000);
+camera.lookAt(0, 400, 0);
 
 // --- Renderer ---
 const renderer = new THREE.WebGLRenderer({{antialias:true}});
@@ -56,27 +54,27 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // --- Licht ---
-const sun = new THREE.DirectionalLight(0xffffff, 1.0);
-sun.position.set(1500 * SCALE, 2000 * SCALE, 1500 * SCALE);
-sun.castShadow = true;
-scene.add(sun);
+const mainLight = new THREE.SpotLight(0xffffff, 1.5);
+mainLight.position.set(1500, 2000, 1000);
+mainLight.angle = Math.PI / 5;
+mainLight.penumbra = 0.3;
+mainLight.castShadow = true;
+scene.add(mainLight);
 
-const fillLight = new THREE.DirectionalLight(0xfff0e0, 0.4);
-fillLight.position.set(-1200 * SCALE, 400 * SCALE, -800 * SCALE);
-scene.add(fillLight);
+const backLight = new THREE.DirectionalLight(0xaaaaff, 0.3);
+backLight.position.set(-1000, 500, -1000);
+scene.add(backLight);
 
-const hemi = new THREE.HemisphereLight(0xddeeff, 0xffffff, 0.3);
-scene.add(hemi);
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+const ambient = new THREE.AmbientLight(0x666666, 0.6);
+scene.add(ambient);
 
-// --- Lagerraum (größer skaliert) ---
-const roomSize = 4000 * SCALE;
-const wallMat = new THREE.MeshPhongMaterial({{ color: 0xeeeeee, side: THREE.BackSide }});
-const roomGeo = new THREE.BoxGeometry(roomSize, roomSize * 0.6, roomSize);
-const room = new THREE.Mesh(roomGeo, wallMat);
-room.position.y = roomSize * 0.3;
-room.receiveShadow = true;
-scene.add(room);
+// --- Boden (neutral dunkel) ---
+const floorGeo = new THREE.PlaneGeometry(4000, 4000);
+const floorMat = new THREE.MeshPhongMaterial({{ color: 0x2a2a2a, shininess: 10, reflectivity: 0.2 }});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
 
 // --- Coil ---
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
