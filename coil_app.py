@@ -2,16 +2,15 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-# Vollbild und weißer Hintergrund
-st.set_page_config(page_title="3D Coil Vollansicht", layout="wide")
+st.set_page_config(page_title="3D Coil Vollbild (Fix)", layout="wide")
 
 # Coil-Parameter
 RID = 300
 RAD = 800
 WIDTH = 300
-COLOR = "#b87333"  # Kupferfarbe
+COLOR = "#b87333"
 
-# Geometrie berechnen
+# Geometrie
 theta = np.linspace(0, 2*np.pi, 200)
 z = np.linspace(-WIDTH/2, WIDTH/2, 80)
 theta, z = np.meshgrid(theta, z)
@@ -53,23 +52,23 @@ for z_surf in [z_top, z_bottom]:
         showscale=False
     ))
 
-# Kamera- und Layout-Optimierung
+# Vollansicht mit fixierter Kamera
 fig = go.Figure(data=surfaces)
 fig.update_layout(
     scene=dict(
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-        zaxis=dict(visible=False),
-        aspectmode="data",  # <-- automatisches Seitenverhältnis
+        xaxis=dict(visible=False, range=[-RAD*1.3, RAD*1.3]),
+        yaxis=dict(visible=False, range=[-RAD*1.3, RAD*1.3]),
+        zaxis=dict(visible=False, range=[-WIDTH, WIDTH]),
+        aspectmode="cube",  # füllt Bildschirm gleichmäßig aus
         bgcolor="#ffffff"
     ),
     paper_bgcolor="#ffffff",
     margin=dict(l=0, r=0, t=0, b=0),
-    scene_camera=dict(eye=dict(x=2, y=2, z=1.5)),
+    scene_camera=dict(eye=dict(x=2.5, y=2.5, z=1.2)),
     dragmode="orbit"
 )
 
-# CSS für echte Vollbilddarstellung
+# CSS für echten Vollbildmodus
 st.markdown("""
     <style>
         html, body, [data-testid="stAppViewContainer"], [data-testid="stVerticalBlock"] {
@@ -92,5 +91,4 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Coil darstellen
 st.plotly_chart(fig, use_container_width=True, height=1080)
