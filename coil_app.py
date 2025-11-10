@@ -2,26 +2,24 @@ import streamlit as st
 import streamlit.components.v1 as components
 import math
 
-st.set_page_config(page_title="3D Coil – Stabiler Renderer", layout="wide")
+st.set_page_config(page_title="3D Coil im Raum", layout="wide")
 
 st.sidebar.title("Coil Parameter")
 RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 THK = st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0, step=0.1)
-DENSITY = st.sidebar.selectbox(
-    "Materialdichte",
-    [("Stahl", 7.85), ("Kupfer", 8.96), ("Aluminium", 2.70)],
-    index=0,
-)
+MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=1)
 
-material, rho = DENSITY
-coil_volume = math.pi * (RAD**2 - RID**2) * WIDTH
-coil_weight = coil_volume * rho / 1e6
-st.sidebar.markdown(f"**Gewicht:** {coil_weight:,.2f} kg")
+# Materialfarben
+color_map = {
+    "Stahl": "0x888888",
+    "Kupfer": "0xb87333",
+    "Aluminium": "0xaaaaaa"
+}
 
-st.title("🌀 3D Coil Vorschau")
-st.caption("Diese Version nutzt denselben Renderer wie beim roten Würfel (stabil in Streamlit).")
+st.title("🏭 Coil im Lagerraum")
+st.caption("Fixe Kamera, fester Raum, Coil zentriert – keine automatische Bewegung.")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -32,7 +30,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #cccccc;
+    background: #e0e0e0;
     width: 100%;
     height: 100%;
   }}
@@ -40,64 +38,84 @@ threejs_html = f"""
 </style>
 </head>
 <body>
-<div id="container"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 
 <script>
-// Szene + Kamera
+// --- Szene ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcccccc);
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
-camera.position.set(2000, 1000, 2000);
-camera.lookAt(0, 0, 0);
+scene.background = new THREE.Color(0xf5f5f5);
 
-// Renderer
+// --- Kamera ---
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
+camera.position.set(1200, 800, 1200);
+camera.lookAt(0, 200, 0);
+
+// --- Renderer ---
 const renderer = new THREE.WebGLRenderer({{antialias:true}});
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// Licht
-const light = new THREE.DirectionalLight(0xffffff, 1.3);
-light.position.set(1500, 2000, 1000);
+// --- Licht ---
+const light = new THREE.DirectionalLight(0xffffff, 1.2);
+light.position.set(1000, 1500, 1000);
+light.castShadow = true;
+light.shadow.mapSize.width = 2048;
+light.shadow.mapSize.height = 2048;
 scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-// Grid
-const grid = new THREE.GridHelper(4000, 40, 0x888888, 0x444444);
-scene.add(grid);
+// --- Raum / Lagerumgebung ---
+const floorGeo = new THREE.PlaneGeometry(4000, 4000);
+const floorMat = new THREE.MeshPhongMaterial({{ color: 0xdddddd }});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
 
-// ---- Coil ----
+// Wände
+function makeWall(x, z, rot) {{
+  const wallGeo = new THREE.PlaneGeometry(4000, 2000);
+  const wallMat = new THREE.MeshPhongMaterial({{ color: 0xe8e8e8 }});
+  const wall = new THREE.Mesh(wallGeo, wallMat);
+  wall.position.set(x, 1000, z);
+  wall.rotation.y = rot;
+  wall.receiveShadow = true;
+  scene.add(wall);
+}}
+makeWall(0, -2000, 0);
+makeWall(-2000, 0, Math.PI / 2);
+
+// --- Coil ---
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
-
-// Außenform
 const outerShape = new THREE.Shape();
 outerShape.absarc(0, 0, RAD, 0, Math.PI * 2, false);
-
-// Innenloch
 const innerHole = new THREE.Path();
 innerHole.absarc(0, 0, RID, 0, Math.PI * 2, true);
 outerShape.holes.push(innerHole);
-
-// Extrusion (Tiefe = Breite)
 const extrudeSettings = {{ depth: WIDTH, bevelEnabled: false }};
 const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
 geometry.rotateX(-Math.PI / 2);
 geometry.translate(0, WIDTH / 2, 0);
 
-// Material
-const material = new THREE.MeshPhongMaterial({{ color: 0xb7b7b7, shininess: 80 }});
+const material = new THREE.MeshPhongMaterial({{
+  color: {color_map[MATERIAL]},
+  shininess: 90,
+  reflectivity: 0.5
+}});
 const coil = new THREE.Mesh(geometry, material);
+coil.castShadow = true;
+coil.receiveShadow = true;
 scene.add(coil);
 
-// Animation (leichte Rotation)
+// --- Render Loop ---
 function animate() {{
   requestAnimationFrame(animate);
-  coil.rotation.y += 0.01;
   renderer.render(scene, camera);
 }}
 animate();
 
+// --- Resize ---
 window.addEventListener('resize', () => {{
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -108,4 +126,4 @@ window.addEventListener('resize', () => {{
 </html>
 """
 
-components.html(threejs_html, height=700)
+components.html(threejs_html, height=750)
