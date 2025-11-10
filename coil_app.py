@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Coil auf Palette", layout="wide")
+st.set_page_config(page_title="Coil auf Palette – Clean", layout="wide")
 
 # ---- Sidebar (mm) ----
 st.sidebar.title("Coil Parameter")
@@ -10,23 +10,17 @@ RAD   = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
-PALLET = st.sidebar.radio("Palette", ["EU 1200×800 mm", "Einweg 1200×1200 mm"], index=0)
-
 color_map = {
     "Stahl": "0x9a9a9a",
     "Kupfer": "0xb87333",
     "Aluminium": "0xcfcfcf",
 }
 
-# Palettenmaße
-if PALLET.startswith("EU"):
-    PAL_W, PAL_D = 1200, 800
-else:
-    PAL_W, PAL_D = 1200, 1200
-PAL_H = 144  # typische Palettenhöhe
+# Palettenmaß: EU 1200x800 oder Einweg 1200x1200 – hier 1200x1200 (wie gewünscht)
+PAL_W, PAL_D, PAL_H = 1200, 1200, 144  # Breite, Tiefe, Höhe in mm
 
-st.title("🛠️ Coil auf Palette")
-st.caption("Drehung: Maus (nur um Y-Achse) • Zoom: Mausrad • Kamera auto-framed Coil + Palette")
+st.title("🛠️ Coil auf Palette (ohne Raum)")
+st.caption("Nur Boden + Palette + Coil. Hintergrund dunkel – kein weiß. Y-Drehung & Auto-Zoom aktiv.")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -37,7 +31,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #f5f5f7;  /* neutral hell, nicht grell weiß */
+    background: #484852; /* KEIN WEISS */
     width: 100%;
     height: 100%;
   }}
@@ -45,14 +39,14 @@ threejs_html = f"""
 </style>
 </head>
 <body>
-<!-- THREE core + OrbitControls (nicht modulare Builds, stabil in Streamlit) -->
+<!-- THREE core + OrbitControls (nicht-modular, stabil für Streamlit) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
 // ===== Szene / Kamera / Renderer =====
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf5f5f7);
+scene.background = new THREE.Color(0x484852); // KEIN WEISS
 
 const camera   = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 60000);
 const renderer = new THREE.WebGLRenderer({{ antialias: true }});
@@ -61,7 +55,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// ===== Licht =====
+// ===== Licht (hell, aber neutral) =====
 const sun = new THREE.DirectionalLight(0xffffff, 1.05);
 sun.position.set(2500, 3000, 2200);
 sun.castShadow = true;
@@ -72,19 +66,25 @@ const fill = new THREE.DirectionalLight(0xfff0e0, 0.45);
 fill.position.set(-1600, 800, -1200);
 scene.add(fill);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xdfe8ff, 0.4));
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+scene.add(new THREE.HemisphereLight(0xffffff, 0xdfe8ff, 0.35));
+scene.add(new THREE.AmbientLight(0xffffff, 0.22));
 
-// ===== Schattenebene (dezent) =====
-const shadowMat = new THREE.ShadowMaterial({{ opacity: 0.2 }});
+// ===== Boden (dunkel, dezent), plus Schattenebene =====
+const groundColor = new THREE.MeshPhongMaterial({{ color: 0x3a3a40, shininess: 10 }});
+const groundPlane = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), groundColor);
+groundPlane.rotation.x = -Math.PI / 2;
+groundPlane.receiveShadow = true;
+scene.add(groundPlane);
+
+const shadowMat = new THREE.ShadowMaterial({{ opacity: 0.18 }});
 const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), shadowMat);
 shadowPlane.rotation.x = -Math.PI / 2;
 shadowPlane.receiveShadow = true;
 scene.add(shadowPlane);
 
-// ===== Palette (einfaches massives Deck) =====
+// ===== Palette (massives Deck) =====
 const PAL_W = {PAL_W}, PAL_D = {PAL_D}, PAL_H = {PAL_H};
-const palMat = new THREE.MeshPhongMaterial({{ color: 0xc69c6d }}); // holzfarben
+const palMat = new THREE.MeshPhongMaterial({{ color: 0xc69c6d }});
 const pallet = new THREE.Mesh(new THREE.BoxGeometry(PAL_W, PAL_H, PAL_D), palMat);
 pallet.position.set(0, PAL_H/2, 0);
 pallet.castShadow = pallet.receiveShadow = true;
@@ -103,8 +103,8 @@ hole.absarc(0, 0, RID, 0, Math.PI*2, true, segments);
 shape.holes.push(hole);
 
 const extrude = new THREE.ExtrudeGeometry(shape, {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }});
-extrude.rotateZ(Math.PI/2);             // aufrecht
-extrude.translate(0, PAL_H + RAD, 0);   // Oberkante Palette = PAL_H; Coil „steht“ darauf
+extrude.rotateZ(Math.PI/2);              // aufrecht
+extrude.translate(0, PAL_H + RAD, 0);    // auf Palette stellen
 extrude.computeVertexNormals();
 
 const coilMat = new THREE.MeshPhongMaterial({{
@@ -140,7 +140,7 @@ function frameAll() {{
   const fov = camera.fov * Math.PI/180;
   const maxDim = Math.max(size.x, size.y, size.z);
   let dist = (maxDim/2) / Math.tan(fov/2);
-  dist *= 2.2; // Luft
+  dist *= 2.2;  // Luft
 
   controls.target.copy(center);
   camera.position.set(center.x + dist, center.y + dist*0.35, center.z + dist);
@@ -150,7 +150,8 @@ function frameAll() {{
   controls.maxDistance = dist*3.0;
   controls.update();
 
-  // Shadow-Ebene unter der Palette halten
+  // Boden & Schatten auf y=0 lassen
+  groundPlane.position.y = 0;
   shadowPlane.position.y = 0;
 }}
 frameAll();
