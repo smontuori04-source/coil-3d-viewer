@@ -27,7 +27,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #1a1a1a; /* dunkler Hintergrund */
+    background: #0d0d0d; /* sehr dunkler Hintergrund */
     width: 100%;
     height: 100%;
   }}
@@ -40,10 +40,10 @@ threejs_html = f"""
 <script>
 // --- Szene & Kamera ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111); // dunkles Grau statt Weiß
+scene.background = new THREE.Color(0x0d0d0d); // Dunkler Hintergrund, kein Weiß
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
-camera.position.set(2000, 1000, 2000);
+camera.position.set(1800, 1000, 1800);
 camera.lookAt(0, 400, 0);
 
 // --- Renderer ---
@@ -53,24 +53,35 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// --- Licht ---
-const mainLight = new THREE.SpotLight(0xffffff, 1.5);
+// --- Lichtsystem ---
+const mainLight = new THREE.SpotLight(0xffffff, 1.5, 5000, Math.PI / 4, 0.3);
 mainLight.position.set(1500, 2000, 1000);
-mainLight.angle = Math.PI / 5;
-mainLight.penumbra = 0.3;
+mainLight.target.position.set(0, 300, 0);
 mainLight.castShadow = true;
 scene.add(mainLight);
+scene.add(mainLight.target);
 
-const backLight = new THREE.DirectionalLight(0xaaaaff, 0.3);
-backLight.position.set(-1000, 500, -1000);
-scene.add(backLight);
+// Weiches Streiflicht von der anderen Seite
+const sideLight = new THREE.DirectionalLight(0xaaaaff, 0.4);
+sideLight.position.set(-1000, 800, -800);
+scene.add(sideLight);
 
-const ambient = new THREE.AmbientLight(0x666666, 0.6);
+// Fülllicht von vorne – simuliert indirekte Halle-Beleuchtung
+const frontLight = new THREE.DirectionalLight(0xffffff, 0.5);
+frontLight.position.set(0, 600, 1500);
+scene.add(frontLight);
+
+// Sanftes Umgebungslicht für Details
+const ambient = new THREE.AmbientLight(0x444444, 0.7);
 scene.add(ambient);
 
-// --- Boden (neutral dunkel) ---
+// --- Boden ---
 const floorGeo = new THREE.PlaneGeometry(4000, 4000);
-const floorMat = new THREE.MeshPhongMaterial({{ color: 0x2a2a2a, shininess: 10, reflectivity: 0.2 }});
+const floorMat = new THREE.MeshPhongMaterial({{
+  color: 0x1a1a1a,
+  shininess: 20,
+  reflectivity: 0.3
+}});
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
@@ -94,8 +105,8 @@ geometry.computeVertexNormals();
 
 const material = new THREE.MeshPhongMaterial({{
   color: {color_map[MATERIAL]},
-  shininess: 120,
-  reflectivity: 0.8,
+  shininess: 140,
+  reflectivity: 1.0,
   specular: 0xffffff
 }});
 const coil = new THREE.Mesh(geometry, material);
@@ -121,5 +132,6 @@ window.addEventListener('resize', () => {{
 </body>
 </html>
 """
+
 
 components.html(threejs_html, height=750)
