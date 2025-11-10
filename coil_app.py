@@ -83,6 +83,11 @@ camera_views = {
 
 # --- Plot erstellen ---
 fig = go.Figure(data=surfaces)
+# --- Kamera dynamisch anpassen (zoomt auf den Coil) ---
+max_dim = max(rad, width)
+zoom = 1.8 * (1000 / max_dim)  # je größer der Coil, desto näher die Kamera
+
+# --- Plot aktualisieren ---
 fig.update_layout(
     scene=dict(
         xaxis=dict(visible=False),
@@ -94,36 +99,28 @@ fig.update_layout(
     ),
     paper_bgcolor="#0f1117",
     title=dict(text=f"{metal_type}-Coil", x=0.5, font=dict(size=22, color="white")),
-    margin=dict(l=0, r=0, t=60, b=0),
-    scene_camera=camera_views[view],
-    dragmode="orbit",
-    scene_dragmode="orbit"
+    margin=dict(l=0, r=0, t=30, b=0),
+    scene_camera=dict(
+        eye=dict(x=zoom, y=zoom, z=zoom),
+        center=dict(x=0, y=0, z=0)
+    ),
+    dragmode="orbit"
 )
 
-# --- Dynamische CSS-Anpassung ---
-if fullscreen:
-    st.markdown(
-        """
-        <style>
-            div[data-testid="stPlotlyChart"] {
-                height: 98vh !important;
-                width: 100vw !important;
-                margin: 0 !important;
-            }
-            .block-container {padding: 0rem !important;}
-        </style>
-        """, unsafe_allow_html=True
-    )
-    st.plotly_chart(fig, use_container_width=True, height=1080)
-else:
-    st.markdown(
-        """
-        <style>
-            div[data-testid="stPlotlyChart"] {
-                height: 75vh !important;
-                width: 100% !important;
-            }
-        </style>
-        """, unsafe_allow_html=True
-    )
-    st.plotly_chart(fig, use_container_width=True, height=800)
+# --- CSS für mehr Anzeigefläche ---
+st.markdown(
+    f"""
+    <style>
+        div[data-testid="stPlotlyChart"] {{
+            height: {"98vh" if fullscreen else "80vh"} !important;
+            width: 100vw !important;
+        }}
+        .block-container {{
+            padding: 0rem !important;
+        }}
+    </style>
+    """, unsafe_allow_html=True
+)
+
+# --- Anzeige ---
+st.plotly_chart(fig, use_container_width=True, height=(1080 if fullscreen else 800))
