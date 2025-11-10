@@ -1,6 +1,46 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
+# ---- Designfarben (Sidebar, Buttons etc.) ----
+st.markdown("""
+<style>
+/* Seitenhintergrund */
+body {
+    background-color: #484852;
+}
+
+/* Sidebar-Hintergrund */
+section[data-testid="stSidebar"] {
+    background-color: #484852 !important;
+    color: white !important;
+}
+
+/* Sidebar-Titel und Texte */
+section[data-testid="stSidebar"] h1, 
+section[data-testid="stSidebar"] h2, 
+section[data-testid="stSidebar"] label, 
+section[data-testid="stSidebar"] p {
+    color: white !important;
+}
+
+/* Buttons (globale Streamlit-Buttons) */
+div.stButton > button {
+    background-color: #3a6ea5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5em 1em;
+    font-weight: 500;
+}
+
+/* Hover-Effekt für Buttons */
+div.stButton > button:hover {
+    background-color: #558cc6;
+    color: #ffffff;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.set_page_config(page_title="3D Coil – Reset (Minimal)", layout="wide")
 
 # --- einfache Parameter (mm) ---
@@ -107,7 +147,7 @@ scene.add(coil);
 // ===== sanfte Rotation zur Sichtprüfung =====
 function animate(){{
   requestAnimationFrame(animate);
-  coil.rotation.y += 0.00005; // langsam
+  coil.rotation.y += 0.001; // langsam
   renderer.render(scene, camera);
 }}
 animate();
