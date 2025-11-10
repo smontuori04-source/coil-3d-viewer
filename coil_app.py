@@ -9,8 +9,11 @@ RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 THK = st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0, step=0.1)
-DENSITY = st.sidebar.selectbox("Materialdichte",
-    [("Stahl", 7.85), ("Kupfer", 8.96), ("Aluminium", 2.70)], index=0)
+DENSITY = st.sidebar.selectbox(
+    "Materialdichte",
+    [("Stahl", 7.85), ("Kupfer", 8.96), ("Aluminium", 2.70)],
+    index=0,
+)
 
 material, rho = DENSITY
 coil_volume = math.pi * (RAD**2 - RID**2) * WIDTH
@@ -50,7 +53,7 @@ camera.position.set(2000, 1000, 2000);
 camera.lookAt(0, 0, 0);
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({{antialias:true}});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -83,7 +86,7 @@ geometry.rotateX(-Math.PI / 2);
 geometry.translate(0, WIDTH / 2, 0);
 
 // Material
-const material = new THREE.MeshPhongMaterial({ color: 0xb7b7b7, shininess: 80 });
+const material = new THREE.MeshPhongMaterial({{ color: 0xb7b7b7, shininess: 80 }});
 const coil = new THREE.Mesh(geometry, material);
 scene.add(coil);
 
