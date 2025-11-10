@@ -1,67 +1,43 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ---- Designfarben (Sidebar, Buttons etc.) ----
-st.markdown("""
-<style>
-/* Seitenhintergrund */
-body {
-    background-color: #484852;
-}
+st.set_page_config(page_title="Coil auf Palette", layout="wide")
 
-/* Sidebar-Hintergrund */
-section[data-testid="stSidebar"] {
-    background-color: #484852 !important;
-    color: white !important;
-}
-
-/* Sidebar-Titel und Texte */
-section[data-testid="stSidebar"] h1, 
-section[data-testid="stSidebar"] h2, 
-section[data-testid="stSidebar"] label, 
-section[data-testid="stSidebar"] p {
-    color: white !important;
-}
-
-/* Buttons (globale Streamlit-Buttons) */
-div.stButton > button {
-    background-color: #3a6ea5;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 0.5em 1em;
-    font-weight: 500;
-}
-
-/* Hover-Effekt für Buttons */
-div.stButton > button:hover {
-    background-color: #558cc6;
-    color: #ffffff;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.set_page_config(page_title="3D Coil – Reset (Minimal)", layout="wide")
-
-# --- einfache Parameter (mm) ---
+# ---- Sidebar (mm) ----
 st.sidebar.title("Coil Parameter")
 RID   = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD   = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
+MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
-st.title("🌀 3D-Coil – Minimaler Reset (sicher sichtbar)")
-st.caption("Nur Coil + Licht. Keine Wände, keine Controls. Sanfte Rotation für Sichtbarkeits-Check.")
+PALLET = st.sidebar.radio("Palette", ["EU 1200×800 mm", "Einweg 1200×1200 mm"], index=0)
+
+color_map = {
+    "Stahl": "0x9a9a9a",
+    "Kupfer": "0xb87333",
+    "Aluminium": "0xcfcfcf",
+}
+
+# Palettenmaße
+if PALLET.startswith("EU"):
+    PAL_W, PAL_D = 1200, 800
+else:
+    PAL_W, PAL_D = 1200, 1200
+PAL_H = 144  # typische Palettenhöhe
+
+st.title("🛠️ Coil auf Palette")
+st.caption("Drehung: Maus (nur um Y-Achse) • Zoom: Mausrad • Kamera auto-framed Coil + Palette")
 
 threejs_html = f"""
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <style>
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #484852; /* neutral hellgrau – nicht reinweiß */
+    background: #f5f5f7;  /* neutral hell, nicht grell weiß */
     width: 100%;
     height: 100%;
   }}
@@ -69,38 +45,50 @@ threejs_html = f"""
 </style>
 </head>
 <body>
-<!-- Nur der stabile, nicht-modulare Build -->
+<!-- THREE core + OrbitControls (nicht modulare Builds, stabil in Streamlit) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-// ===== Szene/Kamera/Renderer =====
+// ===== Szene / Kamera / Renderer =====
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x484852);
+scene.background = new THREE.Color(0xf5f5f7);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 20000);
-const renderer = new THREE.WebGLRenderer({{antialias:true}});
+const camera   = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 60000);
+const renderer = new THREE.WebGLRenderer({{ antialias: true }});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // ===== Licht =====
-const key = new THREE.DirectionalLight(0xffffff, 1.15);
-key.position.set(2000, 2200, 1600);
-key.castShadow = true;
-scene.add(key);
+const sun = new THREE.DirectionalLight(0xffffff, 1.05);
+sun.position.set(2500, 3000, 2200);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+scene.add(sun);
 
 const fill = new THREE.DirectionalLight(0xfff0e0, 0.45);
-fill.position.set(-1600, 800, -1000);
+fill.position.set(-1600, 800, -1200);
 scene.add(fill);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xdde8ff, 0.4));
+scene.add(new THREE.HemisphereLight(0xffffff, 0xdfe8ff, 0.4));
 scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
-// ===== dezente Schattenfläche =====
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.ShadowMaterial({{opacity:0.15}}));
-floor.rotation.x = -Math.PI/2;
-floor.receiveShadow = true;
-scene.add(floor);
+// ===== Schattenebene (dezent) =====
+const shadowMat = new THREE.ShadowMaterial({{ opacity: 0.2 }});
+const shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), shadowMat);
+shadowPlane.rotation.x = -Math.PI / 2;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+
+// ===== Palette (einfaches massives Deck) =====
+const PAL_W = {PAL_W}, PAL_D = {PAL_D}, PAL_H = {PAL_H};
+const palMat = new THREE.MeshPhongMaterial({{ color: 0xc69c6d }}); // holzfarben
+const pallet = new THREE.Mesh(new THREE.BoxGeometry(PAL_W, PAL_H, PAL_D), palMat);
+pallet.position.set(0, PAL_H/2, 0);
+pallet.castShadow = pallet.receiveShadow = true;
+scene.add(pallet);
 
 // ===== Coil (vertikal stehend) =====
 const RID   = {RID};
@@ -114,40 +102,63 @@ const hole  = new THREE.Path();
 hole.absarc(0, 0, RID, 0, Math.PI*2, true, segments);
 shape.holes.push(hole);
 
-const geom = new THREE.ExtrudeGeometry(shape, {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }});
-geom.rotateZ(Math.PI/2);   // aufrecht
-geom.translate(0, RAD, 0); // auf "Boden" stellen
-geom.computeVertexNormals();
+const extrude = new THREE.ExtrudeGeometry(shape, {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }});
+extrude.rotateZ(Math.PI/2);             // aufrecht
+extrude.translate(0, PAL_H + RAD, 0);   // Oberkante Palette = PAL_H; Coil „steht“ darauf
+extrude.computeVertexNormals();
 
-const mat = new THREE.MeshPhongMaterial({{
-  color: 0x9a9a9a,
+const coilMat = new THREE.MeshPhongMaterial({{
+  color: {color_map[MATERIAL]},
   shininess: 120,
   reflectivity: 0.8,
   specular: 0xffffff
 }});
-const coil = new THREE.Mesh(geom, mat);
+const coil = new THREE.Mesh(extrude, coilMat);
 coil.castShadow = coil.receiveShadow = true;
 scene.add(coil);
 
-// ===== Kamera automatisch passend setzen =====
-(function frameCoil(){{
-  const box = new THREE.Box3().setFromObject(coil);
+// ===== OrbitControls: nur Y-Achse, kein Pan =====
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minPolarAngle = Math.PI/2 - 0.04;
+controls.maxPolarAngle = Math.PI/2 + 0.04;
+
+// ===== Auto-Framing: Coil + Palette gemeinsam =====
+function frameAll() {{
+  const group = new THREE.Group();
+  group.add(coil.clone());
+  group.add(pallet.clone());
+  scene.add(group);
+  const box = new THREE.Box3().setFromObject(group);
+  scene.remove(group);
+
   const size = new THREE.Vector3(); box.getSize(size);
   const center = new THREE.Vector3(); box.getCenter(center);
 
   const fov = camera.fov * Math.PI/180;
   const maxDim = Math.max(size.x, size.y, size.z);
   let dist = (maxDim/2) / Math.tan(fov/2);
-  dist *= 2.0; // Luft
+  dist *= 2.2; // Luft
 
+  controls.target.copy(center);
   camera.position.set(center.x + dist, center.y + dist*0.35, center.z + dist);
   camera.lookAt(center);
-}})();
 
-// ===== sanfte Rotation zur Sichtprüfung =====
-function animate(){{
+  controls.minDistance = dist*0.6;
+  controls.maxDistance = dist*3.0;
+  controls.update();
+
+  // Shadow-Ebene unter der Palette halten
+  shadowPlane.position.y = 0;
+}}
+frameAll();
+
+// ===== Render-Loop =====
+function animate() {{
   requestAnimationFrame(animate);
-  coil.rotation.y += 0.001; // langsam
+  controls.update();
   renderer.render(scene, camera);
 }}
 animate();
