@@ -2,13 +2,11 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-# Grundlayout
 st.set_page_config(page_title="3D Coil Viewer", layout="wide")
 
-# 🌙 Design-Anpassungen (CSS)
+# 🌙 CSS: Vollbild aktivieren
 st.markdown("""
     <style>
-        /* Vollbild ohne weiße Ränder */
         [data-testid="stAppViewContainer"] {
             background-color: #0f1117;
             padding: 0;
@@ -16,17 +14,13 @@ st.markdown("""
         [data-testid="stSidebar"] {
             background-color: #181a1f;
         }
-        /* Hauptbereich soll alles füllen */
         div.block-container {
-            padding-top: 0rem;
-            padding-bottom: 0rem;
-            padding-left: 0rem;
-            padding-right: 0rem;
+            padding: 0;
             max-width: 100%;
         }
-        /* Plotly-Chart auf volle Höhe */
+        /* plotly iframe auf volle Bildschirmhöhe */
         iframe {
-            height: 95vh !important;
+            height: 97vh !important;
             width: 100% !important;
         }
     </style>
@@ -49,56 +43,36 @@ colors = {
 }
 color = colors[metal_type]
 
-# Coil-Geometrie
-theta_steps = 200
-height_steps = 60
-theta = np.linspace(0, 2 * np.pi, theta_steps)
-z = np.linspace(-width / 2, width / 2, height_steps)
+# Geometrie
+theta_steps, height_steps = 200, 60
+theta = np.linspace(0, 2*np.pi, theta_steps)
+z = np.linspace(-width/2, width/2, height_steps)
 theta, z = np.meshgrid(theta, z)
 
-x_outer = rad * np.cos(theta)
-y_outer = rad * np.sin(theta)
-x_inner = rid * np.cos(theta)
-y_inner = rid * np.sin(theta)
+x_outer = rad*np.cos(theta); y_outer = rad*np.sin(theta)
+x_inner = rid*np.cos(theta); y_inner = rid*np.sin(theta)
 
-# Flächen vorbereiten
-surfaces = []
+surfaces = [
+    go.Surface(x=x_outer, y=y_outer, z=z,
+               colorscale=[[0, color], [1, "white"]],
+               showscale=False,
+               lighting=dict(ambient=0.6, diffuse=0.8, specular=0.5, roughness=0.25),
+               lightposition=dict(x=2000, y=2000, z=1000)),
+    go.Surface(x=x_inner, y=y_inner, z=z,
+               colorscale=[[0, color], [1, "white"]],
+               showscale=False,
+               lighting=dict(ambient=0.5, diffuse=0.7, specular=0.4, roughness=0.3),
+               lightposition=dict(x=-1000, y=-2000, z=500))
+]
 
-# Außenmantel
-surfaces.append(go.Surface(
-    x=x_outer, y=y_outer, z=z,
-    colorscale=[[0, color], [1, "white"]],
-    showscale=False,
-    lighting=dict(ambient=0.6, diffuse=0.8, specular=0.5, roughness=0.25),
-    lightposition=dict(x=2000, y=2000, z=1000)
-))
+theta_t, r_t = np.meshgrid(np.linspace(0, 2*np.pi, theta_steps),
+                           np.linspace(rid, rad, height_steps))
+x_t = r_t*np.cos(theta_t); y_t = r_t*np.sin(theta_t)
+for z_s in [np.ones_like(x_t)*(width/2), np.ones_like(x_t)*(-width/2)]:
+    surfaces.append(go.Surface(x=x_t, y=y_t, z=z_s,
+                               colorscale=[[0, color], [1, "white"]],
+                               showscale=False, opacity=1.0))
 
-# Innenmantel
-surfaces.append(go.Surface(
-    x=x_inner, y=y_inner, z=z,
-    colorscale=[[0, color], [1, "white"]],
-    showscale=False,
-    lighting=dict(ambient=0.5, diffuse=0.7, specular=0.4, roughness=0.3),
-    lightposition=dict(x=-1000, y=-2000, z=500)
-))
-
-# Oben / Unten
-theta_top = np.linspace(0, 2 * np.pi, theta_steps)
-r_top = np.linspace(rid, rad, height_steps)
-theta_top, r_top = np.meshgrid(theta_top, r_top)
-x_top = r_top * np.cos(theta_top)
-y_top = r_top * np.sin(theta_top)
-z_top = np.ones_like(x_top) * (width / 2)
-z_bottom = np.ones_like(x_top) * (-width / 2)
-
-for z_surf in [z_top, z_bottom]:
-    surfaces.append(go.Surface(
-        x=x_top, y=y_top, z=z_surf,
-        colorscale=[[0, color], [1, "white"]],
-        showscale=False, opacity=1.0
-    ))
-
-# Kamera-Positionen
 camera_views = {
     "Isometrisch": dict(eye=dict(x=2.6, y=2.6, z=1.2)),
     "Vorne": dict(eye=dict(x=0.01, y=0.01, z=2.5)),
@@ -106,7 +80,6 @@ camera_views = {
     "Seite": dict(eye=dict(x=3.5, y=0.01, z=0.01))
 }
 
-# Plot konfigurieren
 fig = go.Figure(data=surfaces)
 fig.update_layout(
     scene=dict(
@@ -121,10 +94,9 @@ fig.update_layout(
     title=dict(text=f"{metal_type}-Coil", x=0.5, font=dict(size=22, color="white")),
     margin=dict(l=0, r=0, t=60, b=0),
     scene_camera=camera_views[view],
-    dragmode="orbit"  # 👈 Orbitale Rotation Standard
+    dragmode="orbit",
+    scene_dragmode="orbit"
 )
 
-fig.update_layout(scene_dragmode="orbit")
-
-# 📺 Jetzt Vollbild!
-st.plotly_chart(fig, use_container_width=True, height=950)
+# 📺 Chart fast bildschirmfüllend anzeigen
+st.plotly_chart(fig, use_container_width=True, height=900)
