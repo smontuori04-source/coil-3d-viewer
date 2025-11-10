@@ -2,30 +2,46 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
+# Grundlayout
 st.set_page_config(page_title="3D Coil Viewer", layout="wide")
 
-# 🧱 Seitendesign (Farben)
+# 🌙 Design-Anpassungen (CSS)
 st.markdown("""
     <style>
+        /* Vollbild ohne weiße Ränder */
         [data-testid="stAppViewContainer"] {
             background-color: #0f1117;
+            padding: 0;
         }
         [data-testid="stSidebar"] {
             background-color: #181a1f;
+        }
+        /* Hauptbereich soll alles füllen */
+        div.block-container {
+            padding-top: 0rem;
+            padding-bottom: 0rem;
+            padding-left: 0rem;
+            padding-right: 0rem;
+            max-width: 100%;
+        }
+        /* Plotly-Chart auf volle Höhe */
+        iframe {
+            height: 95vh !important;
+            width: 100% !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
 st.sidebar.header("Parameter")
 
-# 📊 Eingaben
+# Eingaben
 rid = st.sidebar.radio("RID (Innenradius, mm):", [150, 300, 400, 500])
 rad = st.sidebar.slider("RAD (Außenradius, mm)", rid + 10, 1600, 800)
 width = st.sidebar.slider("Breite (mm)", 8, 600, 300)
 metal_type = st.sidebar.selectbox("Material", ["Edelstahl", "Aluminium", "Kupfer"])
 view = st.sidebar.radio("Ansicht:", ["Isometrisch", "Vorne", "Oben", "Seite"], index=0)
 
-# 🎨 Farben
+# Farben
 colors = {
     "Edelstahl": "#C0C0C0",
     "Aluminium": "#D9D9D9",
@@ -33,7 +49,7 @@ colors = {
 }
 color = colors[metal_type]
 
-# 📐 Coil-Geometrie
+# Coil-Geometrie
 theta_steps = 200
 height_steps = 60
 theta = np.linspace(0, 2 * np.pi, theta_steps)
@@ -45,7 +61,7 @@ y_outer = rad * np.sin(theta)
 x_inner = rid * np.cos(theta)
 y_inner = rid * np.sin(theta)
 
-# 🧩 Flächen
+# Flächen vorbereiten
 surfaces = []
 
 # Außenmantel
@@ -82,7 +98,7 @@ for z_surf in [z_top, z_bottom]:
         showscale=False, opacity=1.0
     ))
 
-# 📸 Kameraansichten
+# Kamera-Positionen
 camera_views = {
     "Isometrisch": dict(eye=dict(x=2.6, y=2.6, z=1.2)),
     "Vorne": dict(eye=dict(x=0.01, y=0.01, z=2.5)),
@@ -90,9 +106,8 @@ camera_views = {
     "Seite": dict(eye=dict(x=3.5, y=0.01, z=0.01))
 }
 
-# 🧭 Plot konfigurieren
+# Plot konfigurieren
 fig = go.Figure(data=surfaces)
-
 fig.update_layout(
     scene=dict(
         xaxis=dict(visible=False),
@@ -106,11 +121,10 @@ fig.update_layout(
     title=dict(text=f"{metal_type}-Coil", x=0.5, font=dict(size=22, color="white")),
     margin=dict(l=0, r=0, t=60, b=0),
     scene_camera=camera_views[view],
-    dragmode="orbit"  # <-- 👈 Standard: Orbitale Rotation aktiv
+    dragmode="orbit"  # 👈 Orbitale Rotation Standard
 )
 
-# 💡 Extra: auch im 3D-Szenenmodus dauerhaft Orbit
 fig.update_layout(scene_dragmode="orbit")
 
-# 🖥️ Vollbildanzeige
-st.plotly_chart(fig, use_container_width=True, height=1000)
+# 📺 Jetzt Vollbild!
+st.plotly_chart(fig, use_container_width=True, height=950)
