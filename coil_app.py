@@ -21,7 +21,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #e6e6e6; /* neutral hellgrau – nicht reinweiß */
+    background: #484852; /* neutral hellgrau – nicht reinweiß */
     width: 100%;
     height: 100%;
   }}
