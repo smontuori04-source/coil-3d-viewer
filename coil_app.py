@@ -1,10 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D Coil – Basic Test", layout="wide")
+st.set_page_config(page_title="3D Coil – Sichtbarkeitstest", layout="wide")
 
-st.title("🧪 Three.js Coil Test")
-st.write("Dieser Test zeigt einen festen 3D-Coil, unabhängig von den Sidebar-Parametern.")
+st.title("🧪 Sichtbarkeitstest für Three.js-Coil")
+st.write("Jetzt sollte der Coil garantiert sichtbar sein (grauer Hintergrund + starkes Licht).")
 
 threejs_html = """
 <!DOCTYPE html>
@@ -12,7 +12,7 @@ threejs_html = """
 <head>
 <meta charset="utf-8">
 <style>
-  html, body { margin: 0; overflow: hidden; background: #ffffff; width: 100%; height: 100%; }
+  html, body { margin: 0; overflow: hidden; background: #000000; width: 100%; height: 100%; }
   canvas { display: block; width: 100%; height: 100%; }
 </style>
 </head>
@@ -23,7 +23,7 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/exampl
 
 // Szene
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xffffff);
+scene.background = new THREE.Color(0x202020); // Dunkelgrau
 
 // Kamera
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000);
@@ -33,16 +33,21 @@ camera.lookAt(0, 0, 0);
 // Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // Licht
-const light = new THREE.DirectionalLight(0xffffff, 1.2);
-light.position.set(1000, 1500, 1000);
+const light = new THREE.DirectionalLight(0xffffff, 1.3);
+light.position.set(1500, 2000, 1000);
 scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-// Boden-Grid
-const grid = new THREE.GridHelper(4000, 50, 0x999999, 0xcccccc);
+// Testobjekte (sichtbare Referenzen)
+const axes = new THREE.AxesHelper(1000);
+scene.add(axes);
+
+// Boden
+const grid = new THREE.GridHelper(4000, 40, 0x888888, 0x444444);
 scene.add(grid);
 
 // Coil – feste Werte
@@ -56,11 +61,15 @@ const extrudeSettings = { depth: WIDTH, bevelEnabled: false };
 const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
 geometry.rotateX(-Math.PI / 2);
 geometry.translate(0, WIDTH / 2, 0);
-const material = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.7, roughness: 0.3 });
+const material = new THREE.MeshStandardMaterial({
+  color: 0xb7b7b7,
+  metalness: 0.8,
+  roughness: 0.25
+});
 const coil = new THREE.Mesh(geometry, material);
 scene.add(coil);
 
-// Kamera-Steuerung
+// Orbit Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
 controls.enableDamping = true;
@@ -75,6 +84,7 @@ function animate() {
 }
 animate();
 
+// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
