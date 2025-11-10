@@ -81,6 +81,36 @@ camera_views = {
 }
 
 fig = go.Figure(data=surfaces)
+# --- Plot generieren ---
+fig = go.Figure(data=surfaces)
+fig.update_layout(
+    scene=dict(
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        zaxis=dict(visible=False),
+        aspectmode="manual",
+        aspectratio=dict(x=1, y=1, z=0.6),
+        bgcolor="#0f1117"
+    ),
+    paper_bgcolor="#0f1117",
+    title=dict(text=f"{metal_type}-Coil", x=0.5, font=dict(size=22, color="white")),
+    margin=dict(l=0, r=0, t=60, b=0),
+    scene_camera=camera_views[view],
+    dragmode="orbit",
+    scene_dragmode="orbit"
+)
+
+# --- HTML-Einbettung für Vollbild ---
+html_code = fig.to_html(include_plotlyjs="cdn", full_html=False)
+st.markdown(
+    f"""
+    <div style="width:100vw; height:100vh; overflow:hidden; background:#0f1117;">
+        {html_code}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 fig.update_layout(
     scene=dict(
         xaxis=dict(visible=False),
