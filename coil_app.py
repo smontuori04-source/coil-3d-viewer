@@ -35,7 +35,7 @@ threejs_html = f"""
 <script>
 // ===== Szene/Kamera/Renderer =====
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe6e6e6);
+scene.background = new THREE.Color(0x484852);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 20000);
 const renderer = new THREE.WebGLRenderer({{antialias:true}});
