@@ -27,7 +27,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #e9ecef; /* UI-Hintergrund */
+    background: #e9ecef;
     width: 100%;
     height: 100%;
   }}
@@ -35,29 +35,23 @@ threejs_html = f"""
 </style>
 </head>
 <body>
-<!-- THREE core + OrbitControls (nicht-modulare Builds für Streamlit) -->
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-// ===== Szene & Kamera =====
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf7f7f7);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 50000);
-
-// ===== Renderer =====
 const renderer = new THREE.WebGLRenderer({{antialias:true}});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// ===== Licht: hell & freundlich =====
 const sun = new THREE.DirectionalLight(0xffffff, 1.05);
 sun.position.set(3000, 3500, 2500);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
 scene.add(sun);
 
 const fill = new THREE.DirectionalLight(0xfff2e0, 0.5);
@@ -70,16 +64,15 @@ scene.add(hemi);
 const ambient = new THREE.AmbientLight(0xffffff, 0.25);
 scene.add(ambient);
 
-// ===== Raum: helle Halle (Box innen) =====
+// Raum
 const roomSize = 6000;
 const roomGeo = new THREE.BoxGeometry(roomSize, roomSize * 0.6, roomSize);
 const roomMat = new THREE.MeshPhongMaterial({{ color: 0xf0f0f0, side: THREE.BackSide }});
 const room = new THREE.Mesh(roomGeo, roomMat);
-room.position.y = (roomSize * 0.6) / 2; // Boden auf y=0
+room.position.y = (roomSize * 0.6) / 2;
 room.receiveShadow = true;
 scene.add(room);
 
-// Boden leicht glänzend
 const floorGeo = new THREE.PlaneGeometry(roomSize, roomSize);
 const floorMat = new THREE.MeshPhongMaterial({{ color: 0xeeeeee, shininess: 30 }});
 const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -87,7 +80,6 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// ===== Requisiten: einfache Regale, Paletten, Fässer =====
 function addShelf(x, z) {{
   const shelf = new THREE.Group();
   const upr = new THREE.Mesh(new THREE.BoxGeometry(40, 1000, 40), new THREE.MeshPhongMaterial({{color:0xc9c9c9}}));
@@ -100,9 +92,9 @@ function addShelf(x, z) {{
   shelf.position.set(x, 0, z);
   shelf.castShadow = shelf.receiveShadow = true;
   scene.add(shelf);
-}
+}}
 addShelf(-1800, -1200);
-addShelf( 2000,  -800);
+addShelf(2000, -800);
 
 function addPallet(x, z) {{
   const wood = new THREE.MeshPhongMaterial({{color:0xc69c6d}});
@@ -112,7 +104,7 @@ function addPallet(x, z) {{
   scene.add(deck);
 }}
 addPallet(-800, 900);
-addPallet( 900, 1100);
+addPallet(900, 1100);
 
 function addBarrel(x, z, c) {{
   const body = new THREE.MeshPhongMaterial({{color:c, shininess:60}});
@@ -123,12 +115,10 @@ function addBarrel(x, z, c) {{
 }}
 addBarrel(-300, 1000, 0x3a6ea5);
 addBarrel(-100, 1000, 0x8a2d2d);
-addBarrel( 100, 1000, 0x2d8a51);
+addBarrel(100, 1000, 0x2d8a51);
 
-// ===== Coil (vertikal stehend) =====
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
 const segments = 256;
-
 const outerShape = new THREE.Shape();
 outerShape.absarc(0, 0, RAD, 0, Math.PI * 2, false, segments);
 const innerHole = new THREE.Path();
@@ -137,7 +127,6 @@ outerShape.holes.push(innerHole);
 
 const extrudeSettings = {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }};
 const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
-// vertikal aufstellen:
 geometry.rotateZ(Math.PI / 2);
 geometry.translate(0, RAD, 0);
 geometry.computeVertexNormals();
@@ -153,36 +142,28 @@ coil.castShadow = true;
 coil.receiveShadow = true;
 scene.add(coil);
 
-// ===== Kamera-Framing & Controls =====
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;             // kein Schieben
-// Nur um Y-Achse drehen (Blick bleibt waagerecht)
+controls.enablePan = false;
 controls.minPolarAngle = Math.PI/2 - 0.05;
 controls.maxPolarAngle = Math.PI/2 + 0.05;
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 
 function frameCoil() {{
-  // Zielpunkt: Coil-Mitte (etwas über Boden)
   const targetY = RAD;
   controls.target.set(0, targetY, 0);
-
   const fov = camera.fov * Math.PI/180;
-  const coilMax = Math.max(RAD*2, WIDTH);        // grobe Ausdehnung
-  let dist = coilMax / (2*Math.tan(fov/2));      // Sichtabstand
-  dist *= 2.2;                                   // Luft lassen
-  // Startposition etwas schräg
+  const coilMax = Math.max(RAD*2, WIDTH);
+  let dist = coilMax / (2*Math.tan(fov/2));
+  dist *= 2.2;
   camera.position.set(dist, targetY + dist*0.35, dist);
   camera.lookAt(0, targetY, 0);
-
-  // sinnvolle Zoom-Grenzen
   controls.minDistance = dist*0.6;
   controls.maxDistance = dist*3.2;
   controls.update();
 }}
 frameCoil();
 
-// ===== Render-Loop =====
 function animate() {{
   requestAnimationFrame(animate);
   controls.update();
@@ -190,7 +171,6 @@ function animate() {{
 }}
 animate();
 
-// ===== Resize =====
 window.addEventListener('resize', () => {{
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
