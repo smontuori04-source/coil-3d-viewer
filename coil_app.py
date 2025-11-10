@@ -117,14 +117,17 @@ fig.update_layout(
     scene_dragmode="orbit"
 )
 
-# --- HTML-Einbettung für echtes Vollbild ---
-html_code = fig.to_html(include_plotlyjs="cdn", full_html=False)
+# CSS, um Höhe auf 100 % des Fensters zu setzen
 st.markdown(
-    f"""
-    <div style="position:fixed; top:0; left:320px; right:0; bottom:0;
-                background:#0f1117; overflow:hidden; z-index:1;">
-        {html_code}
-    </div>
+    """
+    <style>
+        div[data-testid="stVerticalBlock"] div[data-testid="stPlotlyChart"] {
+            height: 95vh !important;
+        }
+    </style>
     """,
     unsafe_allow_html=True
 )
+
+# 📺 Anzeige – nutzt fast den ganzen Bildschirm
+st.plotly_chart(fig, use_container_width=True, height=950)
