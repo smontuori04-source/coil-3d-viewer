@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import math
 
-st.set_page_config(page_title="3D Coil im Raum", layout="wide")
+st.set_page_config(page_title="3D Coil im Raum (Smooth)", layout="wide")
 
 st.sidebar.title("Coil Parameter")
 RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
@@ -11,15 +11,14 @@ WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 THK = st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0, step=0.1)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=1)
 
-# Materialfarben
 color_map = {
     "Stahl": "0x888888",
     "Kupfer": "0xb87333",
     "Aluminium": "0xaaaaaa"
 }
 
-st.title("🏭 Coil im Lagerraum")
-st.caption("Fixe Kamera, fester Raum, Coil zentriert – keine automatische Bewegung.")
+st.title("🏭 Glatter Coil im fixen Raum")
+st.caption("Fixe Kamera, glatte Oberfläche, Coil bleibt zentriert.")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -41,12 +40,11 @@ threejs_html = f"""
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 
 <script>
-// --- Szene ---
+// --- Szene & Kamera ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf5f5f5);
+scene.background = new THREE.Color(0xf7f7f7);
 
-// --- Kamera ---
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 10000);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 10000);
 camera.position.set(1200, 800, 1200);
 camera.lookAt(0, 200, 0);
 
@@ -57,15 +55,13 @@ renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- Licht ---
-const light = new THREE.DirectionalLight(0xffffff, 1.2);
+const light = new THREE.DirectionalLight(0xffffff, 1.1);
 light.position.set(1000, 1500, 1000);
 light.castShadow = true;
-light.shadow.mapSize.width = 2048;
-light.shadow.mapSize.height = 2048;
 scene.add(light);
 scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-// --- Raum / Lagerumgebung ---
+// --- Raum ---
 const floorGeo = new THREE.PlaneGeometry(4000, 4000);
 const floorMat = new THREE.MeshPhongMaterial({{ color: 0xdddddd }});
 const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -73,10 +69,9 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Wände
 function makeWall(x, z, rot) {{
-  const wallGeo = new THREE.PlaneGeometry(4000, 2000);
-  const wallMat = new THREE.MeshPhongMaterial({{ color: 0xe8e8e8 }});
+  const wallGeo = new THREE.PlaneGeometry(4000, 2000, 1, 1);
+  const wallMat = new THREE.MeshPhongMaterial({{ color: 0xeaeaea }});
   const wall = new THREE.Mesh(wallGeo, wallMat);
   wall.position.set(x, 1000, z);
   wall.rotation.y = rot;
@@ -88,27 +83,34 @@ makeWall(-2000, 0, Math.PI / 2);
 
 // --- Coil ---
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
+const segments = 256; // ⬅️ höhere Auflösung für glatte Rundung
+
 const outerShape = new THREE.Shape();
-outerShape.absarc(0, 0, RAD, 0, Math.PI * 2, false);
+outerShape.absarc(0, 0, RAD, 0, Math.PI * 2, false, segments);
+
 const innerHole = new THREE.Path();
-innerHole.absarc(0, 0, RID, 0, Math.PI * 2, true);
+innerHole.absarc(0, 0, RID, 0, Math.PI * 2, true, segments);
 outerShape.holes.push(innerHole);
-const extrudeSettings = {{ depth: WIDTH, bevelEnabled: false }};
+
+const extrudeSettings = {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }};
 const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
 geometry.rotateX(-Math.PI / 2);
 geometry.translate(0, WIDTH / 2, 0);
+geometry.computeVertexNormals();
 
+// --- Material ---
 const material = new THREE.MeshPhongMaterial({{
   color: {color_map[MATERIAL]},
-  shininess: 90,
-  reflectivity: 0.5
+  shininess: 100,
+  reflectivity: 0.6,
+  specular: 0xffffff
 }});
 const coil = new THREE.Mesh(geometry, material);
 coil.castShadow = true;
 coil.receiveShadow = true;
 scene.add(coil);
 
-// --- Render Loop ---
+// --- Render ---
 function animate() {{
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
