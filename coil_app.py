@@ -10,10 +10,9 @@ st.sidebar.header("Parameter")
 rid = st.sidebar.radio("RID (Innenradius, mm):", [150, 300, 400, 500])
 rad = st.sidebar.slider("RAD (Außenradius, mm)", rid + 10, 1600, 800)
 width = st.sidebar.slider("Breite (mm)", 8, 600, 300)
-thickness = st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0)
 metal_type = st.sidebar.selectbox("Material", ["Edelstahl", "Aluminium", "Kupfer"])
 
-# Metallfarbe auswählen
+# Farben
 colors = {
     "Edelstahl": "#C0C0C0",
     "Aluminium": "#D9D9D9",
@@ -21,53 +20,84 @@ colors = {
 }
 color = colors[metal_type]
 
-# Zylinder (Coil) berechnen
-theta = np.linspace(0, 2 * np.pi, 100)
-z = np.linspace(-width / 2, width / 2, 50)
+# Coil-Parameter
+theta_steps = 200
+height_steps = 60
+
+theta = np.linspace(0, 2 * np.pi, theta_steps)
+z = np.linspace(-width / 2, width / 2, height_steps)
 theta, z = np.meshgrid(theta, z)
 
-# Außen- und Innenmantel
+# Zylinder-Koordinaten für Innen- und Außenmantel
 x_outer = rad * np.cos(theta)
 y_outer = rad * np.sin(theta)
 x_inner = rid * np.cos(theta)
 y_inner = rid * np.sin(theta)
 
-# Coil-Wand simulieren
-x = np.concatenate([x_outer, x_inner[::-1]])
-y = np.concatenate([y_outer, y_inner[::-1]])
-z = np.concatenate([z, z[::-1]])
+# Seitenflächen (Außen, Innen, Oben, Unten)
+surfaces = []
 
-# Farbverlauf (Metall-Reflexion)
-intensity = (np.cos(theta) * 0.5 + 0.5)
-
-fig = go.Figure(data=[go.Surface(
-    x=x, y=y, z=z,
-    surfacecolor=intensity,
+# Außenmantel
+surfaces.append(go.Surface(
+    x=x_outer, y=y_outer, z=z,
     colorscale=[[0, color], [1, "white"]],
-    cmin=0, cmax=1,
     showscale=False,
-    lighting=dict(ambient=0.5, diffuse=0.9, specular=0.5, roughness=0.3),
-    lightposition=dict(x=2000, y=1000, z=1000),
-    name="Coil"
-)])
+    lighting=dict(ambient=0.5, diffuse=0.8, specular=0.4, roughness=0.4),
+    lightposition=dict(x=2000, y=2000, z=1000),
+    name="Außenmantel"
+))
 
-# Kamera, Licht & Layout
+# Innenmantel
+surfaces.append(go.Surface(
+    x=x_inner, y=y_inner, z=z,
+    colorscale=[[0, color], [1, "white"]],
+    showscale=False,
+    lighting=dict(ambient=0.4, diffuse=0.6, specular=0.3, roughness=0.5),
+    lightposition=dict(x=-1000, y=-2000, z=500),
+    name="Innenmantel"
+))
+
+# Obere Fläche
+theta_top = np.linspace(0, 2 * np.pi, theta_steps)
+r_top = np.linspace(rid, rad, height_steps)
+theta_top, r_top = np.meshgrid(theta_top, r_top)
+x_top = r_top * np.cos(theta_top)
+y_top = r_top * np.sin(theta_top)
+z_top = np.ones_like(x_top) * (width / 2)
+surfaces.append(go.Surface(
+    x=x_top, y=y_top, z=z_top,
+    colorscale=[[0, color], [1, "white"]],
+    showscale=False, opacity=1.0
+))
+
+# Untere Fläche
+z_bottom = np.ones_like(x_top) * (-width / 2)
+surfaces.append(go.Surface(
+    x=x_top, y=y_top, z=z_bottom,
+    colorscale=[[0, color], [1, "white"]],
+    showscale=False, opacity=1.0
+))
+
+# Plot zusammensetzen
+fig = go.Figure(data=surfaces)
+
+# Layout fixieren
 fig.update_layout(
     scene=dict(
         xaxis=dict(visible=False),
         yaxis=dict(visible=False),
         zaxis=dict(visible=False),
         aspectmode="manual",
-        aspectratio=dict(x=1, y=1, z=0.5),
+        aspectratio=dict(x=1, y=1, z=0.4),
         bgcolor="white"
     ),
-    title=dict(text=f"3D {metal_type}-Coil", x=0.5, font=dict(size=22)),
+    title=dict(text=f"{metal_type}-Coil", x=0.5, font=dict(size=22)),
     margin=dict(l=0, r=0, t=60, b=0),
 )
 
-# Kamera-Perspektive
+# Kamera leicht schräg
 fig.update_layout(scene_camera=dict(
     eye=dict(x=1.8, y=1.8, z=1.0)
 ))
 
-st.plotly_chart(fig, use_container_width=True, height=800)
+st.plotly_chart(fig, use_container_width=True, height=850)
