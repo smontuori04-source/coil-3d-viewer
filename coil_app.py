@@ -5,35 +5,18 @@ import plotly.graph_objects as go
 # --- Grundeinstellungen ---
 st.set_page_config(page_title="3D Coil Viewer", layout="wide")
 
-# --- Styling (Vollbild, dunkles Design) ---
-st.markdown("""
-    <style>
-        [data-testid="stAppViewContainer"] {
-            background-color: #0f1117;
-            padding: 0;
-        }
-        [data-testid="stSidebar"] {
-            background-color: #181a1f;
-        }
-        div.block-container {
-            padding: 0;
-            max-width: 100%;
-        }
-        html, body {
-            height: 100%;
-            margin: 0;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- Sidebar-Steuerung ---
+# --- Sidebar-Layout ---
 st.sidebar.header("Parameter")
 
+# Coil-Parameter
 rid = st.sidebar.radio("RID (Innenradius, mm):", [150, 300, 400, 500])
 rad = st.sidebar.slider("RAD (Außenradius, mm)", rid + 10, 1600, 800)
 width = st.sidebar.slider("Breite (mm)", 8, 600, 300)
 metal_type = st.sidebar.selectbox("Material", ["Edelstahl", "Aluminium", "Kupfer"])
 view = st.sidebar.radio("Ansicht:", ["Isometrisch", "Vorne", "Oben", "Seite"], index=0)
+
+# --- Vollbild-Schalter ---
+fullscreen = st.sidebar.checkbox("🖥️ Vollbildmodus aktivieren", value=False)
 
 # --- Farben definieren ---
 colors = {
@@ -43,18 +26,18 @@ colors = {
 }
 color = colors[metal_type]
 
-# --- Coil-Geometrie erstellen ---
+# --- Coil-Geometrie ---
 theta_steps, height_steps = 200, 60
-theta = np.linspace(0, 2*np.pi, theta_steps)
-z = np.linspace(-width/2, width/2, height_steps)
+theta = np.linspace(0, 2 * np.pi, theta_steps)
+z = np.linspace(-width / 2, width / 2, height_steps)
 theta, z = np.meshgrid(theta, z)
 
-x_outer = rad*np.cos(theta)
-y_outer = rad*np.sin(theta)
-x_inner = rid*np.cos(theta)
-y_inner = rid*np.sin(theta)
+x_outer = rad * np.cos(theta)
+y_outer = rad * np.sin(theta)
+x_inner = rid * np.cos(theta)
+y_inner = rid * np.sin(theta)
 
-# --- Oberflächenliste ---
+# --- Oberflächen ---
 surfaces = []
 
 # Außenmantel
@@ -76,12 +59,12 @@ surfaces.append(go.Surface(
 ))
 
 # Oben / Unten
-theta_top, r_top = np.meshgrid(np.linspace(0, 2*np.pi, theta_steps),
+theta_top, r_top = np.meshgrid(np.linspace(0, 2 * np.pi, theta_steps),
                                np.linspace(rid, rad, height_steps))
-x_top = r_top*np.cos(theta_top)
-y_top = r_top*np.sin(theta_top)
-z_top = np.ones_like(x_top)*(width/2)
-z_bottom = np.ones_like(x_top)*(-width/2)
+x_top = r_top * np.cos(theta_top)
+y_top = r_top * np.sin(theta_top)
+z_top = np.ones_like(x_top) * (width / 2)
+z_bottom = np.ones_like(x_top) * (-width / 2)
 
 for z_surf in [z_top, z_bottom]:
     surfaces.append(go.Surface(
@@ -117,17 +100,30 @@ fig.update_layout(
     scene_dragmode="orbit"
 )
 
-# CSS, um Höhe auf 100 % des Fensters zu setzen
-st.markdown(
-    """
-    <style>
-        div[data-testid="stVerticalBlock"] div[data-testid="stPlotlyChart"] {
-            height: 95vh !important;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# 📺 Anzeige – nutzt fast den ganzen Bildschirm
-st.plotly_chart(fig, use_container_width=True, height=950)
+# --- Dynamische CSS-Anpassung ---
+if fullscreen:
+    st.markdown(
+        """
+        <style>
+            div[data-testid="stPlotlyChart"] {
+                height: 98vh !important;
+                width: 100vw !important;
+                margin: 0 !important;
+            }
+            .block-container {padding: 0rem !important;}
+        </style>
+        """, unsafe_allow_html=True
+    )
+    st.plotly_chart(fig, use_container_width=True, height=1080)
+else:
+    st.markdown(
+        """
+        <style>
+            div[data-testid="stPlotlyChart"] {
+                height: 75vh !important;
+                width: 100% !important;
+            }
+        </style>
+        """, unsafe_allow_html=True
+    )
+    st.plotly_chart(fig, use_container_width=True, height=800)
