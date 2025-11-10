@@ -107,7 +107,7 @@ scene.add(coil);
 // ===== sanfte Rotation zur Sichtprüfung =====
 function animate(){{
   requestAnimationFrame(animate);
-  coil.rotation.y += 0.01; // langsam
+  coil.rotation.y += 0.00005; // langsam
   renderer.render(scene, camera);
 }}
 animate();
