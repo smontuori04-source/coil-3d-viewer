@@ -11,41 +11,63 @@ rid = st.sidebar.radio("RID (Innenradius, mm):", [150, 300, 400, 500])
 rad = st.sidebar.slider("RAD (Außenradius, mm)", rid + 10, 1600, 800)
 width = st.sidebar.slider("Breite (mm)", 8, 600, 300)
 thickness = st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0)
+metal_type = st.sidebar.selectbox("Material", ["Edelstahl", "Aluminium", "Kupfer"])
 
-st.sidebar.write(f"RID = {rid} mm, RAD = {rad} mm, Breite = {width} mm, Dicke = {thickness} mm")
+# Metallfarbe auswählen
+colors = {
+    "Edelstahl": "#C0C0C0",
+    "Aluminium": "#D9D9D9",
+    "Kupfer": "#B87333"
+}
+color = colors[metal_type]
 
-# Coil-Daten berechnen
-turns = int((rad - rid) / thickness)
-theta = np.linspace(0, 2 * np.pi * turns, 8000)
-r = np.linspace(rid, rad, len(theta))
-x = r * np.cos(theta)
-y = r * np.sin(theta)
-z = np.linspace(-width/2, width/2, len(theta))  # mittig
+# Zylinder (Coil) berechnen
+theta = np.linspace(0, 2 * np.pi, 100)
+z = np.linspace(-width / 2, width / 2, 50)
+theta, z = np.meshgrid(theta, z)
 
-# 3D-Plot
-fig = go.Figure(data=[go.Scatter3d(
+# Außen- und Innenmantel
+x_outer = rad * np.cos(theta)
+y_outer = rad * np.sin(theta)
+x_inner = rid * np.cos(theta)
+y_inner = rid * np.sin(theta)
+
+# Coil-Wand simulieren
+x = np.concatenate([x_outer, x_inner[::-1]])
+y = np.concatenate([y_outer, y_inner[::-1]])
+z = np.concatenate([z, z[::-1]])
+
+# Farbverlauf (Metall-Reflexion)
+intensity = (np.cos(theta) * 0.5 + 0.5)
+
+fig = go.Figure(data=[go.Surface(
     x=x, y=y, z=z,
-    mode='lines',
-    line=dict(color='gray', width=6)
+    surfacecolor=intensity,
+    colorscale=[[0, color], [1, "white"]],
+    cmin=0, cmax=1,
+    showscale=False,
+    lighting=dict(ambient=0.5, diffuse=0.9, specular=0.5, roughness=0.3),
+    lightposition=dict(x=2000, y=1000, z=1000),
+    name="Coil"
 )])
 
-# **Wichtige Änderungen hier:**
+# Kamera, Licht & Layout
 fig.update_layout(
     scene=dict(
-        xaxis=dict(nticks=10, range=[-rad * 1.2, rad * 1.2]),
-        yaxis=dict(nticks=10, range=[-rad * 1.2, rad * 1.2]),
-        zaxis=dict(nticks=10, range=[-width * 1.2, width * 1.2]),
-        aspectmode='manual',           # feste Skalierung!
-        aspectratio=dict(x=1, y=1, z=0.5),  # Z verkürzt = realistischer Coil
-        bgcolor='white'
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        zaxis=dict(visible=False),
+        aspectmode="manual",
+        aspectratio=dict(x=1, y=1, z=0.5),
+        bgcolor="white"
     ),
-    title="3D Coil Visualisierung",
-    margin=dict(l=0, r=0, t=50, b=0)
+    title=dict(text=f"3D {metal_type}-Coil", x=0.5, font=dict(size=22)),
+    margin=dict(l=0, r=0, t=60, b=0),
 )
 
-# Kamera-Startposition: leicht schräg, wie bei 3D-CAD
+# Kamera-Perspektive
 fig.update_layout(scene_camera=dict(
-    eye=dict(x=1.5, y=1.5, z=0.7)
+    eye=dict(x=1.8, y=1.8, z=1.0)
 ))
 
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, use_container_width=True, height=800)
