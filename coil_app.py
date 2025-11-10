@@ -1,57 +1,57 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D Coil Base", layout="wide")
+RID, RAD, WIDTH = 300, 800, 300
+# Beispiel: Zuschnittberechnung in Python
+length = 2 * 3.1416 * ((RID + RAD) / 2)
 
-# Sidebar mit Platzhaltern
-st.sidebar.title("Parameter")
-st.sidebar.radio("RID (mm)", [150, 300, 400, 500], index=1)
-st.sidebar.slider("RAD (mm)", 200, 1600, 800, step=10)
-st.sidebar.slider("Breite (mm)", 8, 600, 300)
-st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0, step=0.1)
-st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium", "Zink"], index=1)
-st.sidebar.radio("Ansicht", ["Isometrisch", "Vorne", "Oben", "Seite"], index=0)
+st.write(f"Zuschnittlänge: {length:.2f} mm")
 
-# CSS-Layout: Sidebar links fixiert, rechter Bereich Vollbild
-st.markdown("""
-    <style>
-        section[data-testid="stSidebar"] {
-            position: fixed !important;
-            top: 0;
-            left: 0;
-            height: 100vh !important;
-            width: 320px !important;
-            background-color: #1e2328 !important;
-            border-right: 1px solid #2f343a !important;
-            padding: 18px !important;
-            color: #f2f2f2 !important;
-            z-index: 10;
-        }
-        section[data-testid="stSidebar"] h1,
-        section[data-testid="stSidebar"] label,
-        section[data-testid="stSidebar"] p {
-            color: #f2f2f2 !important;
-        }
-        div[data-testid="stAppViewContainer"] > div:nth-child(1) {
-            margin-left: 320px !important;
-            height: 100vh !important;
-            width: calc(100vw - 320px) !important;
-            background: #ffffff !important;
-        }
-        .block-container {
-            padding: 0 !important;
-            margin: 0 !important;
-            background: white !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
+# Übergib Python-Werte an Three.js Szene
+threejs_html = f"""
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+import {{ OrbitControls }} from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
 
-# Platzhalter im Hauptbereich
-st.markdown(
-    """
-    <div style="display:flex;justify-content:center;align-items:center;
-                height:100vh;font-size:1.5rem;color:#444;">
-        <p><b>3D-Bereich (bereit für Lagerraum / Coil Visualisierung)</b></p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xffffff);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 10000);
+camera.position.set(1500, 800, 1500);
+const renderer = new THREE.WebGLRenderer({{antialias:true}});
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const light = new THREE.DirectionalLight(0xffffff, 1.0);
+light.position.set(1000,1500,1000);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+
+// Coil
+const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
+const shape = new THREE.Shape();
+shape.absarc(0,0,RAD,0,Math.PI*2,false);
+const hole = new THREE.Path();
+hole.absarc(0,0,RID,0,Math.PI*2,true);
+shape.holes.push(hole);
+
+const extrudeSettings = {{ steps: 1, depth: WIDTH, bevelEnabled: false }};
+const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+geometry.rotateX(-Math.PI/2);
+geometry.translate(0, WIDTH/2, 0);
+const material = new THREE.MeshStandardMaterial({{ color:0xb87333, metalness:0.8, roughness:0.25 }});
+const coil = new THREE.Mesh(geometry, material);
+scene.add(coil);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enablePan = false;
+
+function animate() {{
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}}
+animate();
+</script>
+"""
+
+components.html(threejs_html, height=600)
