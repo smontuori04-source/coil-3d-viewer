@@ -2,14 +2,14 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 
-# 🔧 Grundlayout (volle Seite, dunkler Hintergrund)
-st.set_page_config(page_title="3D Coil Minimal", layout="wide")
+# 🔧 Grundlayout
+st.set_page_config(page_title="3D Coil Minimal - White BG", layout="wide")
 
 # Coil-Parameter (fest)
 RID = 300   # mm Innenradius
 RAD = 800   # mm Außenradius
 WIDTH = 300 # mm Spulenbreite
-COLOR = "#b87333"  # Kupferfarbe
+COLOR = "#b87333"  # Kupfer
 
 # =====================
 # 🧮 Geometrie berechnen
@@ -31,19 +31,20 @@ surfaces = []
 # Außenmantel
 surfaces.append(go.Surface(
     x=x_outer, y=y_outer, z=z,
-    colorscale=[[0, COLOR], [1, "white"]],
+    colorscale=[[0, COLOR], [1, "#f5f5f5"]],
     showscale=False,
-    lighting=dict(ambient=0.6, diffuse=0.8, specular=0.4)
+    lighting=dict(ambient=0.5, diffuse=0.9, specular=0.5, roughness=0.3),
+    lightposition=dict(x=1200, y=2000, z=800)
 ))
 
 # Innenmantel
 surfaces.append(go.Surface(
     x=x_inner, y=y_inner, z=z,
-    colorscale=[[0, COLOR], [1, "white"]],
+    colorscale=[[0, COLOR], [1, "#eeeeee"]],
     showscale=False
 ))
 
-# Stirnseiten (oben & unten)
+# Stirnseiten
 theta_top, r_top = np.meshgrid(np.linspace(0, 2 * np.pi, 200),
                                np.linspace(RID, RAD, 80))
 x_top = r_top * np.cos(theta_top)
@@ -54,7 +55,7 @@ z_bottom = -z_top
 for z_surf in [z_top, z_bottom]:
     surfaces.append(go.Surface(
         x=x_top, y=y_top, z=z_surf,
-        colorscale=[[0, COLOR], [1, "white"]],
+        colorscale=[[0, COLOR], [1, "#fafafa"]],
         showscale=False
     ))
 
@@ -69,11 +70,11 @@ fig.update_layout(
         zaxis=dict(visible=False),
         aspectmode="manual",
         aspectratio=dict(x=1, y=1, z=0.6),
-        bgcolor="#0f1117"
+        bgcolor="#ffffff"  # Weißer Hintergrund
     ),
-    paper_bgcolor="#0f1117",
+    paper_bgcolor="#ffffff",
     margin=dict(l=0, r=0, t=0, b=0),
-    scene_camera=dict(eye=dict(x=2, y=2, z=1.3)),
+    scene_camera=dict(eye=dict(x=2.2, y=2.2, z=1.2)),
     dragmode="orbit"
 )
 
@@ -89,6 +90,7 @@ st.markdown(
         }
         .block-container {
             padding: 0rem !important;
+            background-color: white;
         }
     </style>
     """,
