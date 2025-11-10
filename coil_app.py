@@ -1,14 +1,43 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import math
 
-RID, RAD, WIDTH = 300, 800, 300
-# Beispiel: Zuschnittberechnung in Python
-length = 2 * 3.1416 * ((RID + RAD) / 2)
+st.set_page_config(page_title="3D Coil – Python + Three.js", layout="wide")
 
-st.write(f"Zuschnittlänge: {length:.2f} mm")
+# ---------------------- Sidebar: Parameter & Berechnung ----------------------
+st.sidebar.title("Coil Parameter")
 
-# Übergib Python-Werte an Three.js Szene
+RID = st.sidebar.slider("Innenradius (mm)", 150, 500, 300, step=10)
+RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
+WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
+THK = st.sidebar.slider("Dicke (mm)", 0.1, 5.0, 1.0, step=0.1)
+DENSITY = st.sidebar.selectbox("Materialdichte", [("Stahl", 7.85), ("Kupfer", 8.96), ("Aluminium", 2.70)], index=0)
+
+# ---------------------- Berechnungen ----------------------
+material, rho = DENSITY
+coil_volume = math.pi * (RAD**2 - RID**2) * WIDTH  # mm³
+coil_weight = coil_volume * rho / 1e6              # g → kg
+coil_length = 2 * math.pi * (RAD + RID) / 2        # mm (mittlere Länge pro Windung)
+
+st.sidebar.markdown(f"""
+**Material:** {material}  
+**Volumen:** {coil_volume:,.0f} mm³  
+**Gewicht:** {coil_weight:,.2f} kg  
+**Mittlere Länge:** {coil_length:,.0f} mm
+""")
+
+# ---------------------- Three.js Szene ----------------------
 threejs_html = f"""
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body {{ margin:0; overflow:hidden; background:#ffffff; }}
+  canvas {{ display:block; width:100%; height:100%; }}
+</style>
+</head>
+<body>
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 import {{ OrbitControls }} from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/controls/OrbitControls.js';
@@ -16,18 +45,20 @@ import {{ OrbitControls }} from 'https://cdn.jsdelivr.net/npm/three@0.157.0/exam
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff);
 
+// Kamera & Renderer
 const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 10000);
 camera.position.set(1500, 800, 1500);
 const renderer = new THREE.WebGLRenderer({{antialias:true}});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Licht
 const light = new THREE.DirectionalLight(0xffffff, 1.0);
 light.position.set(1000,1500,1000);
 scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff,0.6));
+scene.add(new THREE.AmbientLight(0xffffff,0.7));
 
-// Coil
+// Coil-Geometrie
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
 const shape = new THREE.Shape();
 shape.absarc(0,0,RAD,0,Math.PI*2,false);
@@ -39,19 +70,43 @@ const extrudeSettings = {{ steps: 1, depth: WIDTH, bevelEnabled: false }};
 const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
 geometry.rotateX(-Math.PI/2);
 geometry.translate(0, WIDTH/2, 0);
-const material = new THREE.MeshStandardMaterial({{ color:0xb87333, metalness:0.8, roughness:0.25 }});
+
+const material = new THREE.MeshStandardMaterial({{
+  color: 0xb87333,
+  metalness: 0.8,
+  roughness: 0.25
+}});
 const coil = new THREE.Mesh(geometry, material);
 scene.add(coil);
 
+// Boden
+const floorGeo = new THREE.PlaneGeometry(4000, 4000);
+const floorMat = new THREE.MeshStandardMaterial({{color:0xeeeeee}});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI/2;
+scene.add(floor);
+
+// Kamera-Steuerung
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;
+controls.enablePan = false;  // Kein Verschieben
+controls.target.set(0, WIDTH/2, 0);
+controls.update();
 
 function animate() {{
   requestAnimationFrame(animate);
   renderer.render(scene, camera);
 }}
 animate();
+
+window.addEventListener('resize', () => {{
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}});
 </script>
+</body>
+</html>
 """
 
-components.html(threejs_html, height=600)
+# ---------------------- Darstellung in Streamlit ----------------------
+components.html(threejs_html, height=800)
