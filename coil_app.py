@@ -101,10 +101,11 @@ fig.update_layout(
 )
 
 # -------------------------------------------------------------------
-# 🖼️ CSS FÜR LAYOUT (Fullscreen rechts, Sidebar fixiert links)
+# 🎨 CSS für Layout und Farb-Design
 # -------------------------------------------------------------------
 st.markdown("""
     <style>
+        /* --- Sidebar Layout --- */
         section[data-testid="stSidebar"] {
             position: fixed !important;
             top: 0;
@@ -116,6 +117,8 @@ st.markdown("""
             padding: 16px !important;
             z-index: 10;
         }
+
+        /* --- Hauptanzeige: Vollbild Plot --- */
         div[data-testid="stPlotlyChart"] {
             position: fixed !important;
             top: 0;
@@ -129,10 +132,47 @@ st.markdown("""
             padding: 0 !important;
             z-index: 5;
         }
+
+        /* --- Block Container (zentriert) --- */
         .block-container {
             padding: 0 !important;
             margin: 0 !important;
         }
+
+        /* --- Farbanpassung der Slider und Radio Buttons --- */
+        input[type="range"]::-webkit-slider-thumb {
+            background: #e53935 !important; /* klassisches Streamlit-Rot */
+        }
+        input[type="range"]::-moz-range-thumb {
+            background: #e53935 !important;
+        }
+
+        div[role="radiogroup"] label span {
+            color: #222 !important;
+        }
+        div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {
+            color: #111 !important;
+        }
+        div[role="radiogroup"] input:checked + div {
+            background-color: #e53935 !important;
+            color: white !important;
+        }
+
+        /* --- Schaltflächen / Buttons --- */
+        button[kind="primary"] {
+            background-color: #e53935 !important;
+            color: white !important;
+            border: none !important;
+        }
+        button[kind="primary"]:hover {
+            background-color: #c62828 !important;
+        }
+
+        /* --- Checkboxen --- */
+        input[type="checkbox"] {
+            accent-color: #e53935 !important;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
