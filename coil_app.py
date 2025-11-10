@@ -1,149 +1,119 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D-Coil – Clean (ohne Raum)", layout="wide")
+st.set_page_config(page_title="3D Coil im erweiterten Lagerraum", layout="wide")
 
-# ---- Parameter (mm) ----
 st.sidebar.title("Coil Parameter")
-RID   = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
-RAD   = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
+RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
+RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
-MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
+MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=1)
 
 color_map = {
-    "Stahl": "0x9a9a9a",
+    "Stahl": "0x999999",
     "Kupfer": "0xb87333",
-    "Aluminium": "0xcfcfcf",
+    "Aluminium": "0xd0d0d0"
 }
 
-st.title("🌀 3D-Coil – Clean (ohne Raum)")
-st.caption("Maus: drehen (nur Y-Achse) · Mausrad: zoomen · Kamera passt sich automatisch an.")
+st.title("🏭 Coil im größeren Lagerraum (1,5×)")
+st.caption("Kamera, Raum und Licht sind 1,5× skaliert – Coil bleibt realistisch im Zentrum.")
 
 threejs_html = f"""
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8">
 <style>
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #0d0d0d; /* dunkel, aber nicht tiefschwarz */
+    background: #dcdcdc;
     width: 100%;
     height: 100%;
   }}
-  canvas {{ display:block; width:100%; height:100%; }}
+  canvas {{ display: block; width: 100%; height: 100%; }}
 </style>
 </head>
 <body>
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-// ===== Szene, Kamera, Renderer =====
-const scene   = new THREE.Scene();
-scene.background = new THREE.Color(0x0d0d0d);
+const SCALE = 1.5; // Verhältnisfaktor (1.5×)
 
-const camera  = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 60000);
-const renderer= new THREE.WebGLRenderer({{antialias:true}});
+// --- Szene & Kamera ---
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f5f5);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 20000 * SCALE);
+camera.position.set(2000 * SCALE, 1000 * SCALE, 2000 * SCALE);
+camera.lookAt(0, 500, 0);
+
+// --- Renderer ---
+const renderer = new THREE.WebGLRenderer({{antialias:true}});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// ===== Licht (neutral & sichtbar) =====
-const key = new THREE.DirectionalLight(0xffffff, 1.2);
-key.position.set(2000, 2200, 1600);
-key.castShadow = true;
-scene.add(key);
+// --- Licht ---
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(1500 * SCALE, 2000 * SCALE, 1500 * SCALE);
+sun.castShadow = true;
+scene.add(sun);
 
-const fill = new THREE.DirectionalLight(0xfff0e0, 0.5);
-fill.position.set(-1600, 800, -1200);
-scene.add(fill);
+const fillLight = new THREE.DirectionalLight(0xfff0e0, 0.4);
+fillLight.position.set(-1200 * SCALE, 400 * SCALE, -800 * SCALE);
+scene.add(fillLight);
 
-const hemi = new THREE.HemisphereLight(0xffffff, 0xcfe0ff, 0.45);
+const hemi = new THREE.HemisphereLight(0xddeeff, 0xffffff, 0.3);
 scene.add(hemi);
+scene.add(new THREE.AmbientLight(0xffffff, 0.25));
 
-const amb  = new THREE.AmbientLight(0xffffff, 0.25);
-scene.add(amb);
+// --- Lagerraum (größer skaliert) ---
+const roomSize = 4000 * SCALE;
+const wallMat = new THREE.MeshPhongMaterial({{ color: 0xeeeeee, side: THREE.BackSide }});
+const roomGeo = new THREE.BoxGeometry(roomSize, roomSize * 0.6, roomSize);
+const room = new THREE.Mesh(roomGeo, wallMat);
+room.position.y = roomSize * 0.3;
+room.receiveShadow = true;
+scene.add(room);
 
-// ===== (Optional) Boden für Schatten – extrem dezent =====
-const groundMat = new THREE.ShadowMaterial({{ opacity: 0.15 }});
-const ground    = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), groundMat);
-ground.rotation.x = -Math.PI/2;
-ground.position.y = 0;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// ===== Coil (vertikal stehend) =====
-const RID   = {RID};
-const RAD   = {RAD};
-const WIDTH = {WIDTH};
+// --- Coil ---
+const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
 const segments = 256;
 
-const shape = new THREE.Shape();
-shape.absarc(0, 0, RAD, 0, Math.PI*2, false, segments);
-const hole  = new THREE.Path();
-hole.absarc(0, 0, RID, 0, Math.PI*2, true, segments);
-shape.holes.push(hole);
+const outerShape = new THREE.Shape();
+outerShape.absarc(0, 0, RAD, 0, Math.PI * 2, false, segments);
+const innerHole = new THREE.Path();
+innerHole.absarc(0, 0, RID, 0, Math.PI * 2, true, segments);
+outerShape.holes.push(innerHole);
 
-const geom = new THREE.ExtrudeGeometry(shape, {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }});
-// aufrecht stellen + auf den Boden setzen
-geom.rotateZ(Math.PI/2);
-geom.translate(0, RAD, 0);
-geom.computeVertexNormals();
+const extrudeSettings = {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }};
+const geometry = new THREE.ExtrudeGeometry(outerShape, extrudeSettings);
+geometry.rotateZ(Math.PI / 2);
+geometry.translate(0, RAD, 0);
+geometry.computeVertexNormals();
 
-const mat = new THREE.MeshPhongMaterial({{
+const material = new THREE.MeshPhongMaterial({{
   color: {color_map[MATERIAL]},
-  shininess: 130,
-  reflectivity: 0.85,
+  shininess: 120,
+  reflectivity: 0.8,
   specular: 0xffffff
 }});
-const coil = new THREE.Mesh(geom, mat);
-coil.castShadow = coil.receiveShadow = true;
+const coil = new THREE.Mesh(geometry, material);
+coil.castShadow = true;
+coil.receiveShadow = true;
 scene.add(coil);
 
-// ===== OrbitControls: nur Y-Achse, kein Pan =====
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;
-controls.enableDamping = true;
-controls.dampingFactor = 0.06;
-// Blick waagerecht einklemmen:
-controls.minPolarAngle = Math.PI/2 - 0.04;
-controls.maxPolarAngle = Math.PI/2 + 0.04;
-
-// ===== Auto-Framing (passt Zoom/Distanz an) =====
-function frameCoil() {{
-  // Bounding Box des Coils
-  const box = new THREE.Box3().setFromObject(coil);
-  const size = new THREE.Vector3(); box.getSize(size);
-  const center = new THREE.Vector3(); box.getCenter(center);
-
-  const fov = camera.fov * Math.PI/180;
-  const maxDim = Math.max(size.x, size.y, size.z);
-  let dist = (maxDim/2) / Math.tan(fov/2);
-  dist *= 2.1; // etwas Luft
-
-  const targetY = center.y;
-  controls.target.set(center.x, targetY, center.z);
-  camera.position.set(center.x + dist, targetY + dist*0.35, center.z + dist);
-  camera.lookAt(controls.target);
-
-  controls.minDistance = dist*0.6;
-  controls.maxDistance = dist*3.0;
-  controls.update();
-}}
-frameCoil();
-
-// ===== Render-Loop =====
+// --- Animation ---
 function animate() {{
   requestAnimationFrame(animate);
-  controls.update();
+  coil.rotation.y += 0.01;
   renderer.render(scene, camera);
 }}
 animate();
 
-// ===== Resize =====
+// --- Resize ---
 window.addEventListener('resize', () => {{
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -154,4 +124,4 @@ window.addEventListener('resize', () => {{
 </html>
 """
 
-components.html(threejs_html, height=760)
+components.html(threejs_html, height=750)
