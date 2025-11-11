@@ -8,29 +8,30 @@ import streamlit.components.v1 as components
 # ==============================
 st.set_page_config(page_title="3D Coil – Zuschnittplanung", layout="wide")
 
-# Sidebar breiter machen per CSS
+# Sidebar auf 66 % verbreitern per CSS
 st.markdown("""
     <style>
         [data-testid="stSidebar"] {
-            width: 500px !important;  /* Sidebar-Breite */
+            width: 66% !important;
+            min-width: 66% !important;
         }
         [data-testid="stSidebar"] > div:first-child {
-            width: 500px !important;
+            width: 66% !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🧮 Sidebar mit Eingabe & Berechnung
+# 🧮 Sidebar: Eingaben & Berechnung
 # ==============================
-st.sidebar.title("🌀 Coil Parameter & Berechnung")
+st.sidebar.title("🌀 Coil Berechnung & Zuschnittplanung")
 
 RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
-# Materialdichte (g/mm³)
+# Dichte (g/mm³)
 density_map = {"Stahl": 0.00785, "Kupfer": 0.00896, "Aluminium": 0.00270}
 rho = density_map[MATERIAL]
 
@@ -62,90 +63,90 @@ try:
     df = pd.DataFrame({
         "Zuschnitt": [f"{i+1}" for i in range(len(cuts))] + (["Rest"] if rest_width > 0 else []),
         "Breite (mm)": cuts + ([rest_width] if rest_width > 0 else []),
-        "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_weight > 0 else []),
+        "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_width > 0 else []),
     })
     st.sidebar.dataframe(df, hide_index=True, use_container_width=True)
 except Exception as e:
     st.sidebar.error(f"Fehler in der Eingabe: {e}")
 
 # ==============================
-# 🧱 Hauptbereich (3D-Visualisierung)
+# 🧱 Hauptbereich (34 %) – 3D-Ansichten
 # ==============================
 st.title("🔩 3D-Coil Visualisierung")
 
-col_left, col_right = st.columns(2)
+# Mastercoil (oben)
+st.markdown("### Mastercoil (3D Ansicht)")
+threejs_master = f"""
+<html><body style="margin:0; background-color:#0E1117;">
+<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
+const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
+renderer.setClearColor(0x0E1117, 1);
+renderer.setSize(window.innerWidth, 350);
+document.body.appendChild(renderer.domElement);
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(1,1,1);
+scene.add(light);
 
-# --- Mastercoil (links) ---
-with col_left:
-    st.markdown("### Mastercoil")
-    threejs_master = f"""
-    <html><body style="margin:0; background-color:#0E1117;">
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-    <script>
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
-    const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
-    renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(500,500);
-    document.body.appendChild(renderer.domElement);
-    const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
+const shape = new THREE.Shape();
+shape.absarc(0,0,{RAD},0,Math.PI*2,false);
+const hole = new THREE.Path();
+hole.absarc(0,0,{RID},0,Math.PI*2,true);
+shape.holes.push(hole);
+const geom = new THREE.ExtrudeGeometry(shape,{{depth:{WIDTH},bevelEnabled:false}});
+geom.rotateZ(Math.PI/2);
+geom.translate(0,{RAD},0);
+const mat = new THREE.MeshPhongMaterial({{color:0x999999, shininess:100}});
+const coil = new THREE.Mesh(geom,mat);
+scene.add(coil);
+camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
+camera.lookAt(0,{RAD/2},0);
+renderer.render(scene,camera);
+</script></body></html>
+"""
+components.html(threejs_master, height=350)
 
+# Coil mit Zuschnitten (unten)
+st.markdown("### Coil mit Zuschnitten (3D Ansicht)")
+threejs_cuts = f"""
+<html><body style="margin:0; background-color:#0E1117;">
+<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
+const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
+renderer.setClearColor(0x0E1117, 1);
+renderer.setSize(window.innerWidth, 350);
+document.body.appendChild(renderer.domElement);
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(1,1,1);
+scene.add(light);
+
+const RID = {RID}, RAD = {RAD};
+const cuts = [{','.join(map(str, cuts)) if 'cuts' in locals() else ''}];
+let offset = 0;
+const colors = [0xb87333, 0x999999, 0xd0d0d0, 0x888888, 0xaaaaaa];
+
+for (let i=0; i<cuts.length; i++) {{
     const shape = new THREE.Shape();
-    shape.absarc(0,0,{RAD},0,Math.PI*2,false);
+    shape.absarc(0,0,RAD,0,Math.PI*2,false);
     const hole = new THREE.Path();
-    hole.absarc(0,0,{RID},0,Math.PI*2,true);
+    hole.absarc(0,0,RID,0,Math.PI*2,true);
     shape.holes.push(hole);
-    const geom = new THREE.ExtrudeGeometry(shape,{{depth:{WIDTH},bevelEnabled:false}});
+    const geom = new THREE.ExtrudeGeometry(shape,{{depth:cuts[i],bevelEnabled:false}});
     geom.rotateZ(Math.PI/2);
-    geom.translate(0,{RAD},0);
-    const mat = new THREE.MeshPhongMaterial({{color:0x999999, shininess:100}});
-    const coil = new THREE.Mesh(geom,mat);
-    scene.add(coil);
-    camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
-    camera.lookAt(0,{RAD/2},0);
-    renderer.render(scene,camera);
-    </script></body></html>
-    """
-    components.html(threejs_master, height=500)
+    geom.translate(offset, RAD, 0);
+    const mat = new THREE.MeshPhongMaterial({{color:colors[i % colors.length], shininess:100}});
+    const part = new THREE.Mesh(geom, mat);
+    scene.add(part);
+    offset += cuts[i];
+}}
 
-# --- Coil mit Zuschnitten (rechts) ---
-with col_right:
-    st.markdown("### Coil mit Zuschnitten")
-    threejs_cuts = f"""
-    <html><body style="margin:0; background-color:#0E1117;">
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-    <script>
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
-    const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
-    renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(500,500);
-    document.body.appendChild(renderer.domElement);
-    const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
-
-    const RID = {RID}, RAD = {RAD};
-    const cuts = [{','.join(map(str, cuts)) if 'cuts' in locals() else ''}];
-    let offset = 0;
-    const colors = [0xb87333, 0x999999, 0xd0d0d0, 0x888888, 0xaaaaaa];
-    
-    for (let i=0; i<cuts.length; i++) {{
-        const shape = new THREE.Shape();
-        shape.absarc(0,0,RAD,0,Math.PI*2,false);
-        const hole = new THREE.Path();
-        hole.absarc(0,0,RID,0,Math.PI*2,true);
-        shape.holes.push(hole);
-        const geom = new THREE.ExtrudeGeometry(shape,{{depth:cuts[i],bevelEnabled:false}});
-        geom.rotateZ(Math.PI/2);
-        geom.translate(offset, RAD, 0);
-        const mat = new THREE.MeshPhongMaterial({{color:colors[i % colors.length], shininess:100}});
-        const part = new THREE.Mesh(geom, mat);
-        scene.add(part);
-        offset += cuts[i];
-    }}
-
-    camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
-    camera.lookAt(0,{RAD/2},0);
-    renderer.render(scene,camera);
-    </script></body></html>
-    """
-    components.html(threejs_cuts, height=500)
+camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
+camera.lookAt(0,{RAD/2},0);
+renderer.render(scene,camera);
+</script></body></html>
+"""
+components.html(threejs_cuts, height=350)
