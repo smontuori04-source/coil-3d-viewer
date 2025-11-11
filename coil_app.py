@@ -71,7 +71,6 @@ col_left, col_right = st.columns([0.6, 0.4])
 
 with col_left:
     st.title("🧮 Coil-Berechnung & Ergebnisse")
-    st.write("Links oben findest du alle Parameter und Berechnungen.")
 
 with col_right:
     st.title("🧲 3D-Coils (liegend)")
@@ -112,7 +111,6 @@ with col_right:
     const coil = new THREE.Mesh(geom, mat);
     scene.add(coil);
 
-    // Kamera automatisch passend setzen (leicht näher)
     const box = new THREE.Box3().setFromObject(coil);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
@@ -153,12 +151,12 @@ with col_right:
     const RID = {RID}, RAD = {RAD}, TOTAL_WIDTH = {WIDTH};
     const cuts = [{cuts_js_list}];
     const sumCuts = cuts.reduce((a,b)=>a+b,0);
-    const scaleFactor = TOTAL_WIDTH / sumCuts;   // Damit Summe der Zuschnitte exakt Mastercoil-Breite ergibt
+    const scaleFactor = TOTAL_WIDTH / sumCuts;
     const colors = [0xb87333, 0x999999, 0xd0d0d0, 0x888888, 0xaaaaaa];
     let heightOffset = 0;
 
     for (let i = 0; i < cuts.length; i++) {{
-        const cutWidth = cuts[i] * scaleFactor;  // skaliert zur Gesamtbreite
+        const cutWidth = cuts[i] * scaleFactor;
         const shape = new THREE.Shape();
         shape.absarc(0,0,RAD,0,Math.PI*2,false);
         const hole = new THREE.Path();
@@ -167,23 +165,23 @@ with col_right:
 
         const geom = new THREE.ExtrudeGeometry(shape, {{depth: cutWidth, bevelEnabled:false, curveSegments:128}});
         geom.rotateX(Math.PI/2);
-        geom.translate(0, heightOffset + cutWidth/2, 0);   // Stapel in Z-Richtung
+        geom.translate(0, heightOffset + cutWidth/2, 0);
         const mat = new THREE.MeshStandardMaterial({{color: colors[i % colors.length], metalness:0.85, roughness:0.3}});
         const part = new THREE.Mesh(geom, mat);
         scene.add(part);
 
-        // 🔴 Trennlinie oben drauf
-        const lineGeo = new THREE.PlaneGeometry(RAD*2.2, 2);
-        const lineMat = new THREE.MeshBasicMaterial({{color: 0xff0000}});
-        const line = new THREE.Mesh(lineGeo, lineMat);
-        line.rotateX(Math.PI/2);
-        line.position.set(0, heightOffset + cutWidth + 1, 0);
-        scene.add(line);
+        if (i < cuts.length - 1) {{
+            const lineGeo = new THREE.PlaneGeometry(RAD*2.2, 2);
+            const lineMat = new THREE.MeshBasicMaterial({{color: 0xff0000}});
+            const line = new THREE.Mesh(lineGeo, lineMat);
+            line.rotateX(Math.PI/2);
+            line.position.set(0, heightOffset + cutWidth + 1, 0);
+            scene.add(line);
+        }}
 
         heightOffset += cutWidth;
     }}
 
-    // Kamera leicht schräg & näher positionieren
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
