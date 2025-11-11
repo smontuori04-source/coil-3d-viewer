@@ -84,30 +84,30 @@ except Exception as e:
 col_left, col_right = st.columns([0.55, 0.45])
 
 with col_right:
-    st.title("🧲 3D-Coils (liegend)")
+    st.title("🧲 3D-Coils (hell & liegend)")
 
     # ---------- Mastercoil ----------
     st.markdown("### 🧩 Mastercoil")
     master_html = f"""
-    <html><body style="margin:0; background:#17191C; display:flex; justify-content:center; align-items:center;">
+    <html><body style="margin:0; background:white; display:flex; justify-content:center; align-items:center;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
     <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, 1.1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
-    renderer.setClearColor(0x17191C, 1);
+    renderer.setClearColor(0xffffff, 1);
     renderer.setSize(window.innerWidth * 0.5, 450);
     document.body.appendChild(renderer.domElement);
 
-    // Lichtsetup (heller & weicher)
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(2700, 1000, 800);
-    key.castShadow = true;
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xfff0d0, 1.2);
-    fill.position.set(-1600, 1400, -1500);
+    // Helles, natürliches Lichtsetup
+    const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+    sun.position.set(2000, 2500, 2000);
+    sun.castShadow = true;
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xfff6e0, 1.0);
+    fill.position.set(-1500, 1200, -1000);
     scene.add(fill);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
     // Coil
     const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
@@ -121,20 +121,23 @@ with col_right:
     geom.rotateX(Math.PI/2);
     geom.translate(0, WIDTH/2, 0);
 
-    const mat = new THREE.MeshStandardMaterial({{color: {base_color}, metalness: 1.0, roughness: 0.15}});
+    const mat = new THREE.MeshStandardMaterial({{
+        color: {base_color},
+        metalness: 1.0,
+        roughness: 0.25
+    }});
     const coil = new THREE.Mesh(geom, mat);
-    coil.castShadow = true;
     scene.add(coil);
 
-    // Kamera automatisch zentrieren & leicht näher
+    // Kamera automatisch zentrieren
     const box = new THREE.Box3().setFromObject(coil);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
-    dist *= 1.2;  // näher ran
-    camera.position.set(center.x + dist*0.7, center.y + dist*0.25, center.z + dist);
+    dist *= 1.3;
+    camera.position.set(center.x + dist*0.8, center.y + dist*0.3, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
@@ -146,28 +149,28 @@ with col_right:
     st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
     cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else "[]"
     colors_js = ",".join([
-        str(int(color_map[MATERIAL], 16) - (i * 0x111111)) for i in range(len(cuts))
+        str(int(color_map[MATERIAL], 16) - (i * 0x222222)) for i in range(len(cuts))
     ]) if cuts else "[]"
 
     cuts_html = f"""
-    <html><body style="margin:0; background:#17191C; display:flex; justify-content:center; align-items:center;">
+    <html><body style="margin:0; background:white; display:flex; justify-content:center; align-items:center;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
     <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(50, 1.1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
-    renderer.setClearColor(0x17191C, 1);
+    renderer.setClearColor(0xffffff, 1);
     renderer.setSize(window.innerWidth * 0.5, 450);
     document.body.appendChild(renderer.domElement);
 
-    // Helleres Licht
-    const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(700, 1000, 800);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xfff0d0, 0.8);
-    fill.position.set(-600, 400, -500);
+    // Helles Tageslicht
+    const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+    sun.position.set(2000, 2500, 2000);
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0xfff6e0, 1.0);
+    fill.position.set(-1500, 1200, -1000);
     scene.add(fill);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
     const RID = {RID}, RAD = {RAD}, TOTAL_WIDTH = {WIDTH};
     const cuts = [{cuts_js_list}];
@@ -187,7 +190,11 @@ with col_right:
         const geom = new THREE.ExtrudeGeometry(shape, {{depth: cutWidth, bevelEnabled:false, curveSegments:128}});
         geom.rotateX(Math.PI/2);
         geom.translate(0, heightOffset + cutWidth/2, 0);
-        const mat = new THREE.MeshStandardMaterial({{color: colors[i % colors.length], metalness:1.0, roughness:0.15}});
+        const mat = new THREE.MeshStandardMaterial({{
+            color: colors[i % colors.length],
+            metalness: 1.0,
+            roughness: 0.25
+        }});
         const part = new THREE.Mesh(geom, mat);
         scene.add(part);
 
@@ -202,15 +209,14 @@ with col_right:
         heightOffset += cutWidth;
     }}
 
-    // Kamera mittiger & näher
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
-    dist *= 1.2;
-    camera.position.set(center.x + dist*0.7, center.y + dist*0.25, center.z + dist);
+    dist *= 1.3;
+    camera.position.set(center.x + dist*0.8, center.y + dist*0.3, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
