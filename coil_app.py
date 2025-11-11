@@ -104,7 +104,7 @@ with col_right:
     key.position.set(700, 1000, 800);
     key.castShadow = true;
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xfff0d0, 0.8);
+    const fill = new THREE.DirectionalLight(0xfff0d0, 0.2);
     fill.position.set(-600, 400, -500);
     scene.add(fill);
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
