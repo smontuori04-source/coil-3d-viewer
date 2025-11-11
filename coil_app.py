@@ -1,10 +1,10 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Palette – Minimal", layout="wide")
+st.set_page_config(page_title="Testfläche – Minimal", layout="wide")
 
-st.title("🪵 EU-Palette 1200 × 800 mm (ohne Coil)")
-st.caption("Nur Palette – neutraler Hintergrund, Orbit-Drehung nur um Y-Achse.")
+st.title("⬛ Flache Testplatte (anstelle der Palette)")
+st.caption("Nur eine flache rechteckige Platte – kein Raum, kein Coil, manuelle Drehung.")
 
 threejs_html = """
 <!DOCTYPE html>
@@ -15,7 +15,7 @@ threejs_html = """
   html, body {
     margin: 0;
     overflow: hidden;
-    background: #484852;  /* neutral dunkelgrau */
+    background: #484852;  /* neutraler dunkler Hintergrund */
     width: 100%;
     height: 100%;
   }
@@ -27,7 +27,7 @@ threejs_html = """
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-// ===== Grundsetup =====
+// ===== Szene, Kamera, Renderer =====
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x484852);
 
@@ -40,28 +40,16 @@ document.body.appendChild(renderer.domElement);
 const sun = new THREE.DirectionalLight(0xffffff, 1.1);
 sun.position.set(2000, 2500, 2000);
 scene.add(sun);
-const fill = new THREE.DirectionalLight(0xfff0e0, 0.4);
-fill.position.set(-1600, 600, -1200);
-scene.add(fill);
-scene.add(new THREE.HemisphereLight(0xffffff, 0xdde8ff, 0.35));
-scene.add(new THREE.AmbientLight(0xffffff, 0.25));
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-// ===== Boden (neutral) =====
-const floorMat = new THREE.MeshPhongMaterial({ color: 0x3a3a40, shininess: 10 });
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(10000, 10000), floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
+// ===== Platte (anstelle Palette) =====
+const PLATTE_W = 1200, PLATTE_D = 800, PLATTE_H = 20;
+const mat = new THREE.MeshPhongMaterial({ color: 0x777777, shininess: 40 });
+const plate = new THREE.Mesh(new THREE.BoxGeometry(PLATTE_W, PLATTE_H, PLATTE_D), mat);
+plate.position.y = PLATTE_H / 2;
+scene.add(plate);
 
-// ===== Palette 1200×800×144 mm =====
-const PAL_W = 1200, PAL_D = 800, PAL_H = 144;
-const palMat = new THREE.MeshPhongMaterial({ color: 0xc69c6d }); // Holzfarben
-const pallet = new THREE.Mesh(new THREE.BoxGeometry(PAL_W, PAL_H, PAL_D), palMat);
-pallet.position.y = PAL_H / 2;
-pallet.castShadow = pallet.receiveShadow = true;
-scene.add(pallet);
-
-// ===== Orbit-Steuerung (nur Y-Achse) =====
+// ===== Orbit Controls =====
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enablePan = false;
 controls.enableDamping = true;
@@ -74,7 +62,6 @@ function frameObject(obj) {
   const box = new THREE.Box3().setFromObject(obj);
   const size = new THREE.Vector3(); box.getSize(size);
   const center = new THREE.Vector3(); box.getCenter(center);
-
   const fov = camera.fov * Math.PI / 180;
   const maxDim = Math.max(size.x, size.y, size.z);
   let dist = (maxDim / 2) / Math.tan(fov / 2);
@@ -87,7 +74,7 @@ function frameObject(obj) {
   controls.maxDistance = dist * 3.0;
   controls.update();
 }
-frameObject(pallet);
+frameObject(plate);
 
 // ===== Render-Loop =====
 function animate() {
