@@ -100,14 +100,14 @@ with col_right:
     document.body.appendChild(renderer.domElement);
 
     // Lichtsetup (heller & weicher)
-    const key = new THREE.DirectionalLight(0xffffff, 2.6);
-    key.position.set(700, 1000, 800);
+    const key = new THREE.DirectionalLight(0xffffff, 1.6);
+    key.position.set(2700, 1000, 800);
     key.castShadow = true;
     scene.add(key);
     const fill = new THREE.DirectionalLight(0xfff0d0, 1.2);
     fill.position.set(-600, 400, -500);
     scene.add(fill);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
 
     // Coil
     const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
