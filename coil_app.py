@@ -124,12 +124,10 @@ with col_right:
     # ---------- Zuschnitt-Coils ----------
     st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
     cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else "[]"
-    weights_js_list = ",".join([str(round(w, 2)) for w in cut_weights]) if cuts else "[]"
 
     cuts_html = f"""
     <html><body style="margin:0; background:#0E1117; display:flex; justify-content:center; align-items:center;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, 1, 1, 20000);
@@ -138,12 +136,6 @@ with col_right:
     renderer.setSize(window.innerWidth * 0.35, 340);
     document.body.appendChild(renderer.domElement);
 
-    const labelRenderer = new THREE.CSS2DRenderer();
-    labelRenderer.setSize(window.innerWidth * 0.35, 340);
-    labelRenderer.domElement.style.position = 'absolute';
-    labelRenderer.domElement.style.top = '0px';
-    document.body.appendChild(labelRenderer.domElement);
-
     const key = new THREE.DirectionalLight(0xffffff, 1);
     key.position.set(600, 1000, 800);
     scene.add(key);
@@ -151,22 +143,10 @@ with col_right:
 
     const RID = {RID}, RAD = {RAD}, TOTAL_WIDTH = {WIDTH};
     const cuts = [{cuts_js_list}];
-    const weights = [{weights_js_list}];
-    if (cuts.length === 0) {{
-        const text = document.createElement('div');
-        text.style.color = 'white';
-        text.innerHTML = 'Keine Zuschnitte';
-        document.body.appendChild(text);
-    }}
-
     const sumCuts = cuts.reduce((a,b)=>a+b,0);
     const scaleFactor = TOTAL_WIDTH / sumCuts;
     const colors = [0xb87333, 0x999999, 0xd0d0d0, 0x888888, 0xaaaaaa];
     let heightOffset = 0;
-
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    const labels = [];
 
     for (let i = 0; i < cuts.length; i++) {{
         const cutWidth = cuts[i] * scaleFactor;
@@ -183,7 +163,6 @@ with col_right:
         const part = new THREE.Mesh(geom, mat);
         scene.add(part);
 
-        // Linie
         if (i < cuts.length - 1) {{
             const lineGeo = new THREE.PlaneGeometry(RAD*2.2, 2);
             const lineMat = new THREE.MeshBasicMaterial({{color: 0xff0000}});
@@ -192,22 +171,6 @@ with col_right:
             line.position.set(0, heightOffset + cutWidth + 1, 0);
             scene.add(line);
         }}
-
-        // Hover Label
-        const div = document.createElement('div');
-        div.className = 'label';
-        div.textContent = weights[i] + ' kg';
-        div.style.padding = '2px 6px';
-        div.style.borderRadius = '5px';
-        div.style.backgroundColor = 'rgba(255,0,0,0.8)';
-        div.style.color = 'white';
-        div.style.fontSize = '12px';
-        div.style.display = 'none';
-        const label = new THREE.CSS2DObject(div);
-        label.position.set(0, heightOffset + cutWidth/2 + 10, RAD * 1.3);
-        scene.add(label);
-        labels.push({{mesh: part, element: div}});
-
         heightOffset += cutWidth;
     }}
 
@@ -221,25 +184,7 @@ with col_right:
     camera.position.set(center.x + dist, center.y + dist*0.6, center.z + dist);
     camera.lookAt(center);
 
-    function animate() {{
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-      labelRenderer.render(scene, camera);
-    }}
-    animate();
-
-    // Hover Logik
-    window.addEventListener('mousemove', (event) => {{
-      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = - (event.clientY / 340) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(scene.children);
-      labels.forEach(lbl => lbl.element.style.display = 'none');
-      if (intersects.length > 0) {{
-        const hovered = labels.find(l => l.mesh === intersects[0].object);
-        if (hovered) hovered.element.style.display = 'block';
-      }}
-    }});
+    renderer.render(scene, camera);
     </script></body></html>
     """
     components.html(cuts_html, height=340)
