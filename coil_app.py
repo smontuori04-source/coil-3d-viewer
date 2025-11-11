@@ -44,17 +44,19 @@ cuts_input = st.sidebar.text_input("Kommagetrennt (z. B. 100, 200, 250)", "100, 
 
 # Zuschnitte
 cuts = []
+cut_weights = []
 try:
     cuts = [float(x.strip()) for x in cuts_input.split(",") if x.strip()]
-    sum_cuts = sum(cuts)
     cut_weights = [kg_per_mm * c for c in cuts]
-    rest_width = WIDTH - sum_cuts
-    rest_weight = kg_per_mm * rest_width if rest_width > 0 else 0.0
+    rest_width = WIDTH - sum(cuts)
+    if rest_width > 0:
+        cuts.append(rest_width)
+        cut_weights.append(kg_per_mm * rest_width)
 
     df = pd.DataFrame({
-        "Zuschnitt": [f"{i+1}" for i in range(len(cuts))] + (["Rest"] if rest_width > 0 else []),
-        "Breite (mm)": cuts + ([rest_width] if rest_width > 0 else []),
-        "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_width > 0 else []),
+        "Zuschnitt": [f"{i+1}" for i in range(len(cuts))],
+        "Breite (mm)": cuts,
+        "Gewicht (kg)": [round(w, 2) for w in cut_weights]
     })
     st.sidebar.dataframe(df, hide_index=True, use_container_width=True)
 except Exception as e:
@@ -71,14 +73,14 @@ with col_right:
     # ---------- Mastercoil ----------
     st.markdown("### 🧩 Mastercoil")
     master_html = f"""
-    <html><body style="margin:0;background:#0E1117;">
+    <html><body style="margin:0; background:#0E1117; display:flex; justify-content:center; align-items:center;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
     <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(60, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
     renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(window.innerWidth, 340);
+    renderer.setSize(window.innerWidth * 0.35, 340);
     document.body.appendChild(renderer.domElement);
 
     const key = new THREE.DirectionalLight(0xffffff, 1);
@@ -111,7 +113,7 @@ with col_right:
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
     dist *= 1.4;
-    camera.position.set(center.x + dist, center.y + dist*0.4, center.z + dist);
+    camera.position.set(center.x + dist, center.y + dist*0.3, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
@@ -119,12 +121,13 @@ with col_right:
     """
     components.html(master_html, height=340)
 
-    # ---------- Zuschnitt-Coils mit Hover ----------
+    # ---------- Zuschnitt-Coils ----------
     st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
-    cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else ""
-    weights_js_list = ",".join([str(round(w, 2)) for w in cut_weights]) if cuts else ""
+    cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else "[]"
+    weights_js_list = ",".join([str(round(w, 2)) for w in cut_weights]) if cuts else "[]"
+
     cuts_html = f"""
-    <html><body style="margin:0;background:#0E1117;">
+    <html><body style="margin:0; background:#0E1117; display:flex; justify-content:center; align-items:center;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/renderers/CSS2DRenderer.js"></script>
     <script>
@@ -132,11 +135,11 @@ with col_right:
     const camera = new THREE.PerspectiveCamera(60, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
     renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(window.innerWidth, 340);
+    renderer.setSize(window.innerWidth * 0.35, 340);
     document.body.appendChild(renderer.domElement);
 
     const labelRenderer = new THREE.CSS2DRenderer();
-    labelRenderer.setSize(window.innerWidth, 340);
+    labelRenderer.setSize(window.innerWidth * 0.35, 340);
     labelRenderer.domElement.style.position = 'absolute';
     labelRenderer.domElement.style.top = '0px';
     document.body.appendChild(labelRenderer.domElement);
@@ -149,6 +152,13 @@ with col_right:
     const RID = {RID}, RAD = {RAD}, TOTAL_WIDTH = {WIDTH};
     const cuts = [{cuts_js_list}];
     const weights = [{weights_js_list}];
+    if (cuts.length === 0) {{
+        const text = document.createElement('div');
+        text.style.color = 'white';
+        text.innerHTML = 'Keine Zuschnitte';
+        document.body.appendChild(text);
+    }}
+
     const sumCuts = cuts.reduce((a,b)=>a+b,0);
     const scaleFactor = TOTAL_WIDTH / sumCuts;
     const colors = [0xb87333, 0x999999, 0xd0d0d0, 0x888888, 0xaaaaaa];
@@ -173,6 +183,7 @@ with col_right:
         const part = new THREE.Mesh(geom, mat);
         scene.add(part);
 
+        // Linie
         if (i < cuts.length - 1) {{
             const lineGeo = new THREE.PlaneGeometry(RAD*2.2, 2);
             const lineMat = new THREE.MeshBasicMaterial({{color: 0xff0000}});
@@ -182,21 +193,20 @@ with col_right:
             scene.add(line);
         }}
 
-        // Tooltip Label (CSS2D)
+        // Hover Label
         const div = document.createElement('div');
         div.className = 'label';
         div.textContent = weights[i] + ' kg';
-        div.style.marginTop = '-1em';
         div.style.padding = '2px 6px';
-        div.style.borderRadius = '6px';
+        div.style.borderRadius = '5px';
         div.style.backgroundColor = 'rgba(255,0,0,0.8)';
         div.style.color = 'white';
         div.style.fontSize = '12px';
         div.style.display = 'none';
         const label = new THREE.CSS2DObject(div);
-        label.position.set(0, heightOffset + cutWidth/2 + 10, RAD*1.2);
+        label.position.set(0, heightOffset + cutWidth/2 + 10, RAD * 1.3);
         scene.add(label);
-        labels.push({{ mesh: part, element: div }});
+        labels.push({{mesh: part, element: div}});
 
         heightOffset += cutWidth;
     }}
@@ -208,7 +218,7 @@ with col_right:
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
     dist *= 1.6;
-    camera.position.set(center.x + dist, center.y + dist*0.5, center.z + dist);
+    camera.position.set(center.x + dist, center.y + dist*0.6, center.z + dist);
     camera.lookAt(center);
 
     function animate() {{
@@ -218,7 +228,7 @@ with col_right:
     }}
     animate();
 
-    // Hover Tooltip Logik
+    // Hover Logik
     window.addEventListener('mousemove', (event) => {{
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = - (event.clientY / 340) * 2 + 1;
