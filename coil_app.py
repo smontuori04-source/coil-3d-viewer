@@ -4,54 +4,73 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # ==============================
-# 📄 Seiten-Setup
+# 📄 Seiten Setup
 # ==============================
 st.set_page_config(page_title="3D Coil – Zuschnittplanung", layout="wide")
 
 # ==============================
-# 🎨 Styling (CSS)
+# 🎨 Modernes Styling
 # ==============================
 st.markdown("""
 <style>
-    /* Gesamter Seitenhintergrund */
     body, [data-testid="stAppViewContainer"] {
         background-color: #2C2F35;
         color: #EDEDED;
     }
 
-    /* Sidebar-Styling */
+    /* Sidebar etwas schmaler (58%) */
     [data-testid="stSidebar"] {
         background-color: #2C2F35 !important;
-        width: 60% !important;
-        min-width: 60% !important;
+        width: 58% !important;
+        min-width: 58% !important;
         color: #EDEDED;
+        padding-right: 2%;
     }
 
-    /* Sidebar-Texte & Inputs */
-    .stRadio > label, .stSlider, .stSelectbox, .stTextInput {
-        color: #EDEDED !important;
+    /* Hauptbereich (3D-Coils) */
+    section.main > div {
+        padding: 1rem 2rem 1rem 0rem;
     }
 
-    /* 3D-Panels rechts */
+    /* 3D Box Layout */
     .threejs-box {
         background-color: #0E1117;
-        border-radius: 12px;
-        box-shadow: 0 0 15px rgba(0,0,0,0.4);
-        padding: 10px;
-        margin-bottom: 30px;
+        border-radius: 16px;
+        box-shadow: 0 0 18px rgba(0,0,0,0.35);
+        padding: 12px;
+        margin-bottom: 35px;
+        transition: all 0.3s ease;
     }
 
-    /* Überschriften */
+    .threejs-box:hover {
+        box-shadow: 0 0 25px rgba(255,255,255,0.08);
+        transform: scale(1.01);
+    }
+
+    /* Typografie */
     h1, h2, h3 {
         color: #EDEDED;
         font-weight: 600;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.4px;
+    }
+
+    /* Trennlinie dezenter */
+    hr {
+        border: 0;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        margin: 10px 0;
+    }
+
+    /* Tabellen in Sidebar */
+    .stDataFrame {
+        border-radius: 8px;
+        overflow: hidden;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# 🧮 Sidebar: Eingaben & Berechnung
+# 🧮 Sidebar – Eingaben
 # ==============================
 st.sidebar.title("🌀 Coil Berechnung & Zuschnittplanung")
 
@@ -60,30 +79,32 @@ RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
-# Dichte (g/mm³)
+# Dichten (g/mm³)
 density_map = {"Stahl": 0.00785, "Kupfer": 0.00896, "Aluminium": 0.00270}
 rho = density_map[MATERIAL]
 
-# Berechnungen
+# ==============================
+# 📏 Berechnung
+# ==============================
 volume_mm3 = math.pi * (RAD**2 - RID**2) * WIDTH
 weight_g = volume_mm3 * rho
 weight_kg = weight_g / 1000
 kg_per_mm = weight_kg / WIDTH
 
-# --- Anzeigen der Werte
 st.sidebar.markdown("---")
-st.sidebar.subheader("📏 Berechnete Werte")
+st.sidebar.subheader("📊 Berechnete Werte")
 col1, col2 = st.sidebar.columns(2)
 col1.metric("Gesamtgewicht", f"{weight_kg:,.0f} kg")
 col2.metric("Gewicht/mm", f"{kg_per_mm:,.2f} kg/mm")
 st.sidebar.metric("Volumen", f"{volume_mm3/1e9:,.2f} dm³")
 
-# --- Zuschnitteingabe
+# ==============================
+# ✂️ Zuschnitt
+# ==============================
 st.sidebar.markdown("---")
 st.sidebar.subheader("✂️ Zuschnittbreiten")
 cuts_input = st.sidebar.text_input("Gib Zuschnittbreiten (Komma getrennt) ein:", "100, 200, 250")
 
-# Zuschnittberechnung
 try:
     cuts = [float(x.strip()) for x in cuts_input.split(",") if x.strip()]
     sum_cuts = sum(cuts)
@@ -94,19 +115,21 @@ try:
     df = pd.DataFrame({
         "Zuschnitt": [f"{i+1}" for i in range(len(cuts))] + (["Rest"] if rest_width > 0 else []),
         "Breite (mm)": cuts + ([rest_width] if rest_width > 0 else []),
-        "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_width > 0 else []),
+        "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_weight > 0 else []),
     })
     st.sidebar.dataframe(df, hide_index=True, use_container_width=True)
-
 except Exception as e:
     st.sidebar.error(f"Fehler in der Eingabe: {e}")
 
 # ==============================
-# 🧱 Hauptbereich (40 %) – 3D-Ansichten
+# 🧱 Hauptbereich (42%) – 3D-Ansichten
 # ==============================
 st.title("🧲 3D-Coil Visualisierung")
 
-# 3D-Mastercoil
+# --- adaptive Höhe
+coil_height = int(st.session_state.get("coil_height", 400))
+
+# === 3D Mastercoil ===
 st.markdown('<div class="threejs-box">', unsafe_allow_html=True)
 st.markdown("### 🧩 Mastercoil (3D Ansicht)")
 
@@ -118,9 +141,11 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
 const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
 renderer.setClearColor(0x0E1117, 1);
-renderer.setSize(window.innerWidth, 420);
+renderer.setSize(window.innerWidth, {coil_height});
 document.body.appendChild(renderer.domElement);
-const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(1,1,1);
+scene.add(light);
 
 const shape = new THREE.Shape();
 shape.absarc(0,0,{RAD},0,Math.PI*2,false);
@@ -131,19 +156,19 @@ shape.holes.push(hole);
 const geom = new THREE.ExtrudeGeometry(shape,{{depth:{WIDTH},bevelEnabled:false}});
 geom.rotateZ(Math.PI/2);
 geom.translate(0,{RAD},0);
-const mat = new THREE.MeshPhongMaterial({{color:0x999999, shininess:100}});
+const mat = new THREE.MeshPhongMaterial({{color:0x999999, shininess:120}});
 const coil = new THREE.Mesh(geom,mat);
 scene.add(coil);
 
-camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
+camera.position.set({RAD*2.2},{RAD*1.4},{RAD*2.2});
 camera.lookAt(0,{RAD/2},0);
 renderer.render(scene,camera);
 </script></body></html>
 """
-components.html(threejs_master, height=420)
+components.html(threejs_master, height=coil_height)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Coil mit Zuschnitten
+# === 3D Coil mit Zuschnitten ===
 st.markdown('<div class="threejs-box">', unsafe_allow_html=True)
 st.markdown("### ✂️ Coil mit Zuschnitten (3D Ansicht)")
 
@@ -155,9 +180,11 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
 const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
 renderer.setClearColor(0x0E1117, 1);
-renderer.setSize(window.innerWidth, 420);
+renderer.setSize(window.innerWidth, {coil_height});
 document.body.appendChild(renderer.domElement);
-const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(1,1,1);
+scene.add(light);
 
 const RID = {RID}, RAD = {RAD};
 const cuts = [{','.join(map(str, cuts)) if 'cuts' in locals() else ''}];
@@ -174,16 +201,16 @@ for (let i=0; i<cuts.length; i++) {{
     const geom = new THREE.ExtrudeGeometry(shape,{{depth:cuts[i],bevelEnabled:false}});
     geom.rotateZ(Math.PI/2);
     geom.translate(offset, RAD, 0);
-    const mat = new THREE.MeshPhongMaterial({{color:colors[i % colors.length], shininess:100}});
+    const mat = new THREE.MeshPhongMaterial({{color:colors[i % colors.length], shininess:120}});
     const part = new THREE.Mesh(geom, mat);
     scene.add(part);
     offset += cuts[i];
 }}
 
-camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
+camera.position.set({RAD*2.2},{RAD*1.4},{RAD*2.2});
 camera.lookAt(0,{RAD/2},0);
 renderer.render(scene,camera);
 </script></body></html>
 """
-components.html(threejs_cuts, height=420)
+components.html(threejs_cuts, height=coil_height)
 st.markdown('</div>', unsafe_allow_html=True)
