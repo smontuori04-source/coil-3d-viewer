@@ -21,7 +21,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #484852; /* neutraler Hintergrund, kein Weiß */
+    background: #484852; /* neutraler Hintergrund */
     width: 100%;
     height: 100%;
   }}
@@ -37,7 +37,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x484852);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 20000);
-const renderer = new THREE.WebGLRenderer({{antialias:true}});
+const renderer = new THREE.WebGLRenderer({{ antialias: true }});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -60,14 +60,14 @@ const WIDTH = {WIDTH};
 const segments = 256;
 
 const shape = new THREE.Shape();
-shape.absarc(0, 0, RAD, 0, Math.PI*2, false, segments);
+shape.absarc(0, 0, RAD, 0, Math.PI * 2, false, segments);
 const hole  = new THREE.Path();
-hole.absarc(0, 0, RID, 0, Math.PI*2, true, segments);
+hole.absarc(0, 0, RID, 0, Math.PI * 2, true, segments);
 shape.holes.push(hole);
 
 const geom = new THREE.ExtrudeGeometry(shape, {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }});
-geom.rotateZ(Math.PI/2);   // vertikal stellen
-geom.translate(0, RAD, 0); // auf y=0 anheben
+geom.rotateZ(Math.PI / 2);   // vertikal stellen
+geom.translate(0, RAD, 0);   // anheben
 geom.computeVertexNormals();
 
 const mat = new THREE.MeshPhongMaterial({{
@@ -80,22 +80,22 @@ const coil = new THREE.Mesh(geom, mat);
 scene.add(coil);
 
 // ===== Kamera automatisch passend setzen =====
-(function frameCoil(){{
+(function frameCoil() {{
   const box = new THREE.Box3().setFromObject(coil);
   const size = new THREE.Vector3(); box.getSize(size);
   const center = new THREE.Vector3(); box.getCenter(center);
 
-  const fov = camera.fov * Math.PI/180;
+  const fov = camera.fov * Math.PI / 180;
   const maxDim = Math.max(size.x, size.y, size.z);
-  let dist = (maxDim/2) / Math.tan(fov/2);
+  let dist = (maxDim / 2) / Math.tan(fov / 2);
   dist *= 2.0; // etwas Luft
 
-  camera.position.set(center.x + dist, center.y + dist*0.35, center.z + dist);
+  camera.position.set(center.x + dist, center.y + dist * 0.35, center.z + dist);
   camera.lookAt(center);
 }})();
 
 // ===== sanfte Rotation =====
-function animate(){{
+function animate() {{
   requestAnimationFrame(animate);
   coil.rotation.y += 0.01;
   renderer.render(scene, camera);
