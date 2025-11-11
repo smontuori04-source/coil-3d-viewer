@@ -9,62 +9,58 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="3D Coil – Zuschnittplanung", layout="wide")
 
 # ==============================
-# 🎨 Modernes Styling
+# 🎨 Styling (kein Scrollen, besseres Verhältnis)
 # ==============================
 st.markdown("""
 <style>
-    body, [data-testid="stAppViewContainer"] {
+    html, body, [data-testid="stAppViewContainer"] {
         background-color: #2C2F35;
         color: #EDEDED;
+        overflow: hidden !important; /* Kein Scrollen */
+        height: 100vh;
     }
 
-    /* Sidebar etwas schmaler (58%) */
+    /* Sidebar */
     [data-testid="stSidebar"] {
         background-color: #2C2F35 !important;
         width: 58% !important;
         min-width: 58% !important;
         color: #EDEDED;
-        padding-right: 2%;
+        padding-right: 1%;
+        overflow-y: auto;
+        height: 100vh;
     }
 
-    /* Hauptbereich (3D-Coils) */
+    /* Hauptbereich rechts */
     section.main > div {
         padding: 1rem 2rem 1rem 0rem;
+        height: 100vh;
+        overflow: hidden;
     }
 
     /* 3D Box Layout */
     .threejs-box {
         background-color: #0E1117;
-        border-radius: 16px;
-        box-shadow: 0 0 18px rgba(0,0,0,0.35);
-        padding: 12px;
-        margin-bottom: 35px;
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        padding: 10px;
+        margin-bottom: 15px;
     }
 
-    .threejs-box:hover {
-        box-shadow: 0 0 25px rgba(255,255,255,0.08);
-        transform: scale(1.01);
-    }
-
-    /* Typografie */
     h1, h2, h3 {
         color: #EDEDED;
         font-weight: 600;
         letter-spacing: 0.4px;
     }
 
-    /* Trennlinie dezenter */
-    hr {
-        border: 0;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        margin: 10px 0;
-    }
-
-    /* Tabellen in Sidebar */
     .stDataFrame {
         border-radius: 8px;
         overflow: hidden;
+    }
+
+    /* Slider schmaler */
+    .stSlider {
+        padding-bottom: 0px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -79,7 +75,7 @@ RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
-# Dichten (g/mm³)
+# Dichte (g/mm³)
 density_map = {"Stahl": 0.00785, "Kupfer": 0.00896, "Aluminium": 0.00270}
 rho = density_map[MATERIAL]
 
@@ -122,14 +118,13 @@ except Exception as e:
     st.sidebar.error(f"Fehler in der Eingabe: {e}")
 
 # ==============================
-# 🧱 Hauptbereich (42%) – 3D-Ansichten
+# 🧱 Hauptbereich – keine Scrollbars, feste Höhe
 # ==============================
 st.title("🧲 3D-Coil Visualisierung")
 
-# --- adaptive Höhe
-coil_height = int(st.session_state.get("coil_height", 400))
+coil_height = 340  # Fixe Höhe für beide Coils, damit kein Scroll nötig ist
 
-# === 3D Mastercoil ===
+# --- Mastercoil ---
 st.markdown('<div class="threejs-box">', unsafe_allow_html=True)
 st.markdown("### 🧩 Mastercoil (3D Ansicht)")
 
@@ -160,7 +155,7 @@ const mat = new THREE.MeshPhongMaterial({{color:0x999999, shininess:120}});
 const coil = new THREE.Mesh(geom,mat);
 scene.add(coil);
 
-camera.position.set({RAD*2.2},{RAD*1.4},{RAD*2.2});
+camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
 camera.lookAt(0,{RAD/2},0);
 renderer.render(scene,camera);
 </script></body></html>
@@ -168,7 +163,7 @@ renderer.render(scene,camera);
 components.html(threejs_master, height=coil_height)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# === 3D Coil mit Zuschnitten ===
+# --- Coil mit Zuschnitten ---
 st.markdown('<div class="threejs-box">', unsafe_allow_html=True)
 st.markdown("### ✂️ Coil mit Zuschnitten (3D Ansicht)")
 
@@ -207,7 +202,7 @@ for (let i=0; i<cuts.length; i++) {{
     offset += cuts[i];
 }}
 
-camera.position.set({RAD*2.2},{RAD*1.4},{RAD*2.2});
+camera.position.set({RAD*2},{RAD*1.2},{RAD*2});
 camera.lookAt(0,{RAD/2},0);
 renderer.render(scene,camera);
 </script></body></html>
