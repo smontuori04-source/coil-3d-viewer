@@ -15,24 +15,19 @@ WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
 # Materialdichte (g/mm³)
-density_map = {
-    "Stahl": 0.00785,
-    "Kupfer": 0.00896,
-    "Aluminium": 0.00270
-}
+density_map = {"Stahl": 0.00785, "Kupfer": 0.00896, "Aluminium": 0.00270}
 rho = density_map[MATERIAL]
 
 # ==============================
-# 🔹 Layout mit 3 Hauptspalten
+# 🔹 Layout mit 2 Hauptspalten
 # ==============================
-col_left, col_mid, col_right = st.columns([2, 1.5, 1.5])
+col_left, col_right = st.columns([1.8, 2])
 
 # --- Spalte 1: Eingaben & Berechnungen ---
 with col_left:
     st.title("🌀 Coil Berechnung & Zuschnittplanung")
     st.caption("Gib Coil-Parameter ein, um Gewichte und Zuschnitte zu berechnen.")
 
-    # --- Berechnungen ---
     volume_mm3 = math.pi * (RAD**2 - RID**2) * WIDTH
     weight_g = volume_mm3 * rho
     weight_kg = weight_g / 1000
@@ -58,24 +53,25 @@ with col_left:
         df = pd.DataFrame({
             "Zuschnitt": [f"{i+1}" for i in range(len(cuts))] + (["Rest"] if rest_width > 0 else []),
             "Breite (mm)": cuts + ([rest_width] if rest_width > 0 else []),
-            "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_width > 0 else []),
+            "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_weight > 0 else []),
         })
         st.dataframe(df, hide_index=True, use_container_width=True)
     except Exception as e:
         st.error(f"Fehler in der Eingabe: {e}")
 
 # ==============================
-# 🔹 Spalte 2: 3D Mastercoil
+# 🔹 Spalte 2: 3D-Ansichten
 # ==============================
-with col_mid:
-    st.subheader("Mastercoil (3D Ansicht)")
+with col_right:
+    st.markdown("### Mastercoil (3D Ansicht)")
     threejs_master = f"""
-    <html><body style="margin:0;">
+    <html><body style="margin:0; background-color:#0E1117;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
     <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
+    renderer.setClearColor(0x0E1117, 1);
     renderer.setSize(400,400);
     document.body.appendChild(renderer.domElement);
     const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
@@ -98,18 +94,15 @@ with col_mid:
     """
     components.html(threejs_master, height=400)
 
-# ==============================
-# 🔹 Spalte 3: 3D Ansicht mit Zuschnitten
-# ==============================
-with col_right:
-    st.subheader("Coil mit Zuschnitten (3D Ansicht)")
+    st.markdown("### Coil mit Zuschnitten (3D Ansicht)")
     threejs_cuts = f"""
-    <html><body style="margin:0;">
+    <html><body style="margin:0; background-color:#0E1117;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
     <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
+    renderer.setClearColor(0x0E1117, 1);
     renderer.setSize(400,400);
     document.body.appendChild(renderer.domElement);
     const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
