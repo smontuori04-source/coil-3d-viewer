@@ -86,7 +86,7 @@ with col_right:
     const camera = new THREE.PerspectiveCamera(60, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
     renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(window.innerWidth, 350);
+    renderer.setSize(window.innerWidth, 340);
     document.body.appendChild(renderer.domElement);
 
     const key = new THREE.DirectionalLight(0xffffff, 1);
@@ -105,31 +105,31 @@ with col_right:
     shape.holes.push(hole);
 
     const geom = new THREE.ExtrudeGeometry(shape, {{depth: WIDTH, bevelEnabled: false, curveSegments: 128}});
-    geom.rotateX(Math.PI/2);   // liegend
+    geom.rotateX(Math.PI/2);   
     geom.translate(0, WIDTH/2, 0);
 
     const mat = new THREE.MeshStandardMaterial({{color: 0x999999, metalness: 0.9, roughness: 0.25}});
     const coil = new THREE.Mesh(geom, mat);
     scene.add(coil);
 
-    // Kamera automatisch passend setzen
+    // Kamera automatisch passend setzen (etwas näher)
     const box = new THREE.Box3().setFromObject(coil);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
-    dist *= 2.0;
-    camera.position.set(center.x + dist, center.y + dist*0.5, center.z + dist);
+    dist *= 1.4;   // näher dran
+    camera.position.set(center.x + dist, center.y + dist*0.4, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
     </script></body></html>
     """
-    components.html(master_html, height=350)
+    components.html(master_html, height=340)
 
     # ---------- ZUSCHNITTE ----------
-    st.markdown("### ✂️ Coil mit Zuschnitten")
+    st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
     cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else ""
     cuts_html = f"""
     <html><body style="margin:0;background:#0E1117;">
@@ -139,7 +139,7 @@ with col_right:
     const camera = new THREE.PerspectiveCamera(60, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
     renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(window.innerWidth, 350);
+    renderer.setSize(window.innerWidth, 340);
     document.body.appendChild(renderer.domElement);
 
     const key = new THREE.DirectionalLight(0xffffff, 1);
@@ -153,8 +153,9 @@ with col_right:
     const RID = {RID}, RAD = {RAD};
     const cuts = [{cuts_js_list}];
     const colors = [0xb87333, 0x999999, 0xd0d0d0, 0x888888, 0xaaaaaa];
-    let offset = 0;
-    for (let i=0; i<cuts.length; i++) {{
+    let heightOffset = 0;
+
+    for (let i = 0; i < cuts.length; i++) {{
         const shape = new THREE.Shape();
         shape.absarc(0,0,RAD,0,Math.PI*2,false);
         const hole = new THREE.Path();
@@ -163,25 +164,25 @@ with col_right:
 
         const geom = new THREE.ExtrudeGeometry(shape, {{depth: cuts[i], bevelEnabled:false, curveSegments:128}});
         geom.rotateX(Math.PI/2);
-        geom.translate(offset, cuts[i]/2, 0);
+        geom.translate(0, heightOffset + cuts[i]/2, 0);   // ÜBEREINANDER (vertikal)
         const mat = new THREE.MeshStandardMaterial({{color: colors[i % colors.length], metalness:0.85, roughness:0.3}});
         const part = new THREE.Mesh(geom, mat);
         scene.add(part);
-        offset += cuts[i];
+        heightOffset += cuts[i];  // Stapel in Z
     }}
 
-    // Kamera automatisch positionieren
+    // Kamera etwas näher setzen
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3(); box.getSize(size);
     const center = new THREE.Vector3(); box.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
-    dist *= 2.0;
-    camera.position.set(center.x + dist, center.y + dist*0.5, center.z + dist);
+    dist *= 1.6;  // näher dran
+    camera.position.set(center.x + dist, center.y + dist*0.6, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
     </script></body></html>
     """
-    components.html(cuts_html, height=350)
+    components.html(cuts_html, height=340)
