@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Coil auf Palette", layout="wide")
+st.set_page_config(page_title="3D Coil + Palette (Clean)", layout="wide")
 
 # --- Parameter ---
 st.sidebar.title("Coil Parameter")
@@ -16,7 +16,7 @@ color_map = {
     "Aluminium": "0xd0d0d0"
 }
 
-st.title("🪵 Coil auf Palette – einfach & sichtbar")
+st.title("🪵 Coil auf Palette – Hintergrundfrei")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -27,11 +27,11 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #f4f4f4; /* heller neutraler Hintergrund */
+    background: transparent; /* kein Hintergrund */
     width: 100%;
     height: 100%;
   }}
-  canvas {{ display:block; width:100%; height:100%; }}
+  canvas {{ display:block; width:100%; height:100%; background: transparent; }}
 </style>
 </head>
 <body>
@@ -39,29 +39,30 @@ threejs_html = f"""
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-// === Szene & Kamera ===
+// === Szene ===
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf4f4f4);
 
+// === Kamera ===
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 100000);
-const renderer = new THREE.WebGLRenderer({{ antialias: true }});
+const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, 0); // komplett transparent
 document.body.appendChild(renderer.domElement);
 
 // === Licht ===
-const key = new THREE.DirectionalLight(0xffffff, 1.1);
-key.position.set(2000, 2000, 1800);
+const key = new THREE.DirectionalLight(0xffffff, 1.2);
+key.position.set(2000, 2000, 1600);
 scene.add(key);
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
 
-// === Palette (1200x800x144 mm) ===
+// === Palette ===
 const PAL_W = 1200, PAL_D = 800, PAL_H = 144;
 const palMat = new THREE.MeshPhongMaterial({{ color: 0xc69c6d }});
 const pallet = new THREE.Mesh(new THREE.BoxGeometry(PAL_W, PAL_H, PAL_D), palMat);
 pallet.position.y = PAL_H / 2;
 scene.add(pallet);
 
-// === Coil (vertikal stehend) ===
+// === Coil ===
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
 const shape = new THREE.Shape();
 shape.absarc(0, 0, RAD, 0, Math.PI * 2, false);
@@ -83,12 +84,13 @@ const mat = new THREE.MeshPhongMaterial({{
 const coil = new THREE.Mesh(geom, mat);
 scene.add(coil);
 
-// === Kamera-Setup ===
+// === Kamera-Steuerung ===
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.enablePan = false;
 
+// === Kamera-Autoanpassung ===
 function frameAll() {{
   const group = new THREE.Group();
   group.add(coil.clone());
