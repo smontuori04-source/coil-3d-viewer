@@ -3,12 +3,28 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+# ==============================
+# 📄 Seiten-Setup
+# ==============================
 st.set_page_config(page_title="3D Coil – Zuschnittplanung", layout="wide")
 
+# Sidebar breiter machen per CSS
+st.markdown("""
+    <style>
+        [data-testid="stSidebar"] {
+            width: 500px !important;  /* Sidebar-Breite */
+        }
+        [data-testid="stSidebar"] > div:first-child {
+            width: 500px !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # ==============================
-# 🔹 Sidebar: Coil Parameter
+# 🧮 Sidebar mit Eingabe & Berechnung
 # ==============================
-st.sidebar.title("Coil Parameter")
+st.sidebar.title("🌀 Coil Parameter & Berechnung")
+
 RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
@@ -18,52 +34,50 @@ MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], in
 density_map = {"Stahl": 0.00785, "Kupfer": 0.00896, "Aluminium": 0.00270}
 rho = density_map[MATERIAL]
 
-# ==============================
-# 🔹 Layout mit 2 Hauptspalten
-# ==============================
-col_left, col_right = st.columns([1.8, 2])
+# Berechnungen
+volume_mm3 = math.pi * (RAD**2 - RID**2) * WIDTH
+weight_g = volume_mm3 * rho
+weight_kg = weight_g / 1000
+kg_per_mm = weight_kg / WIDTH
 
-# --- Spalte 1: Eingaben & Berechnungen ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("📏 Berechnete Werte")
+col1, col2 = st.sidebar.columns(2)
+col1.metric("Gesamtgewicht", f"{weight_kg:,.0f} kg")
+col2.metric("Gewicht/mm", f"{kg_per_mm:,.2f} kg/mm")
+st.sidebar.metric("Volumen", f"{volume_mm3/1e9:,.2f} dm³")
+
+# Zuschnitt-Eingabe
+st.sidebar.markdown("---")
+st.sidebar.subheader("✂️ Zuschnittbreiten")
+cuts_input = st.sidebar.text_input("Gib Zuschnittbreiten (Komma getrennt) ein:", "100, 200, 250")
+
+try:
+    cuts = [float(x.strip()) for x in cuts_input.split(",") if x.strip()]
+    sum_cuts = sum(cuts)
+    cut_weights = [kg_per_mm * c for c in cuts]
+    rest_width = WIDTH - sum_cuts
+    rest_weight = kg_per_mm * rest_width if rest_width > 0 else 0
+
+    df = pd.DataFrame({
+        "Zuschnitt": [f"{i+1}" for i in range(len(cuts))] + (["Rest"] if rest_width > 0 else []),
+        "Breite (mm)": cuts + ([rest_width] if rest_width > 0 else []),
+        "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_weight > 0 else []),
+    })
+    st.sidebar.dataframe(df, hide_index=True, use_container_width=True)
+except Exception as e:
+    st.sidebar.error(f"Fehler in der Eingabe: {e}")
+
+# ==============================
+# 🧱 Hauptbereich (3D-Visualisierung)
+# ==============================
+st.title("🔩 3D-Coil Visualisierung")
+
+col_left, col_right = st.columns(2)
+
+# --- Mastercoil (links) ---
 with col_left:
-    st.title("🌀 Coil Berechnung & Zuschnittplanung")
-    st.caption("Gib Coil-Parameter ein, um Gewichte und Zuschnitte zu berechnen.")
-
-    volume_mm3 = math.pi * (RAD**2 - RID**2) * WIDTH
-    weight_g = volume_mm3 * rho
-    weight_kg = weight_g / 1000
-    kg_per_mm = weight_kg / WIDTH
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Gesamtgewicht", f"{weight_kg:,.0f} kg")
-    col2.metric("Gewicht pro mm", f"{kg_per_mm:,.2f} kg/mm")
-    col3.metric("Volumen", f"{volume_mm3/1e9:,.2f} dm³")
-
-    # --- Zuschnitt Eingabe ---
-    st.subheader("✂️ Zuschnittbreiten")
-    cuts_input = st.text_input("Gib Zuschnittbreiten ein (Komma getrennt)", "100, 200, 250")
-
-    try:
-        cuts = [float(x.strip()) for x in cuts_input.split(",") if x.strip()]
-        sum_cuts = sum(cuts)
-        cut_weights = [kg_per_mm * c for c in cuts]
-        total_cut_weight = sum(cut_weights)
-        rest_width = WIDTH - sum_cuts
-        rest_weight = kg_per_mm * rest_width if rest_width > 0 else 0
-
-        df = pd.DataFrame({
-            "Zuschnitt": [f"{i+1}" for i in range(len(cuts))] + (["Rest"] if rest_width > 0 else []),
-            "Breite (mm)": cuts + ([rest_width] if rest_width > 0 else []),
-            "Gewicht (kg)": [round(w, 2) for w in cut_weights] + ([round(rest_weight, 2)] if rest_weight > 0 else []),
-        })
-        st.dataframe(df, hide_index=True, use_container_width=True)
-    except Exception as e:
-        st.error(f"Fehler in der Eingabe: {e}")
-
-# ==============================
-# 🔹 Spalte 2: 3D-Ansichten
-# ==============================
-with col_right:
-    st.markdown("### Mastercoil (3D Ansicht)")
+    st.markdown("### Mastercoil")
     threejs_master = f"""
     <html><body style="margin:0; background-color:#0E1117;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
@@ -72,7 +86,7 @@ with col_right:
     const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
     renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(400,400);
+    renderer.setSize(500,500);
     document.body.appendChild(renderer.domElement);
     const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
 
@@ -92,9 +106,11 @@ with col_right:
     renderer.render(scene,camera);
     </script></body></html>
     """
-    components.html(threejs_master, height=400)
+    components.html(threejs_master, height=500)
 
-    st.markdown("### Coil mit Zuschnitten (3D Ansicht)")
+# --- Coil mit Zuschnitten (rechts) ---
+with col_right:
+    st.markdown("### Coil mit Zuschnitten")
     threejs_cuts = f"""
     <html><body style="margin:0; background-color:#0E1117;">
     <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
@@ -103,7 +119,7 @@ with col_right:
     const camera = new THREE.PerspectiveCamera(55, 1, 1, 20000);
     const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
     renderer.setClearColor(0x0E1117, 1);
-    renderer.setSize(400,400);
+    renderer.setSize(500,500);
     document.body.appendChild(renderer.domElement);
     const light = new THREE.DirectionalLight(0xffffff, 1); light.position.set(1,1,1); scene.add(light);
 
@@ -132,4 +148,4 @@ with col_right:
     renderer.render(scene,camera);
     </script></body></html>
     """
-    components.html(threejs_cuts, height=400)
+    components.html(threejs_cuts, height=500)
