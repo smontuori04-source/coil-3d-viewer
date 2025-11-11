@@ -210,7 +210,7 @@ with col_right:
     const fov = camera.fov * Math.PI/180;
     let dist = (maxDim/2)/Math.tan(fov/2);
     dist *= 1.2;
-    camera.position.set(center.x + dist*1.7, center.y + dist*0.75, center.z + dist);
+    camera.position.set(center.x + dist*0.4, center.y + dist*0.05, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
