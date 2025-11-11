@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D Coil – Minimal Reset", layout="wide")
+st.set_page_config(page_title="3D Coil – Hintergrund angepasst", layout="wide")
 
 # --- einfache Parameter (mm) ---
 st.sidebar.title("Coil Parameter")
@@ -9,8 +9,8 @@ RID   = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD   = st.sidebar.slider("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.slider("Breite (mm)", 8, 600, 300, step=1)
 
-st.title("🌀 3D-Coil – Nur Coil, ohne Raum oder Palette")
-st.caption("Einfacher Testaufbau: nur Coil + Licht, frei im Raum, sanfte Rotation zur Sichtprüfung.")
+st.title("🌀 3D-Coil – Farbe wie Seitenhintergrund")
+st.caption("Der Hintergrund passt sich automatisch dem Streamlit-Design an.")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -21,11 +21,16 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: #484852; /* neutraler Hintergrund */
+    background: transparent; /* kein eigener Hintergrund */
     width: 100%;
     height: 100%;
   }}
-  canvas {{ display:block; width:100%; height:100%; }}
+  canvas {{
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: transparent; /* durchsichtig */
+  }}
 </style>
 </head>
 <body>
@@ -34,10 +39,10 @@ threejs_html = f"""
 <script>
 // ===== Szene/Kamera/Renderer =====
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x484852);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 20000);
-const renderer = new THREE.WebGLRenderer({{ antialias: true }});
+const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
+renderer.setClearColor(0x000000, 0); // 0 = komplett transparent
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
