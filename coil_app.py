@@ -101,11 +101,11 @@ with col_right:
 
     // Lichtsetup (heller & weicher)
     const key = new THREE.DirectionalLight(0xffffff, 1.6);
-    key.position.set(2700, 1000, 800);
+    key.position.set(2700, 2000, 1800);
     key.castShadow = true;
     scene.add(key);
     const fill = new THREE.DirectionalLight(0xfff0d0, 1.2);
-    fill.position.set(-600, 400, -500);
+    fill.position.set(-1600, 1400, -1500);
     scene.add(fill);
     scene.add(new THREE.AmbientLight(0xffffff, 0.2));
 
