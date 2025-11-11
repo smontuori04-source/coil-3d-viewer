@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D Coil + Palette (Clean)", layout="wide")
+st.set_page_config(page_title="3D Coil – Nur Coil", layout="wide")
 
 # --- Parameter ---
 st.sidebar.title("Coil Parameter")
@@ -16,7 +16,7 @@ color_map = {
     "Aluminium": "0xd0d0d0"
 }
 
-st.title("🪵 Coil auf Palette – Hintergrundfrei")
+st.title("🌀 3D-Coil – Hintergrundfrei, nur das Objekt")
 
 threejs_html = f"""
 <!DOCTYPE html>
@@ -27,7 +27,7 @@ threejs_html = f"""
   html, body {{
     margin: 0;
     overflow: hidden;
-    background: transparent; /* kein Hintergrund */
+    background: transparent;
     width: 100%;
     height: 100%;
   }}
@@ -46,7 +46,7 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 100000);
 const renderer = new THREE.WebGLRenderer({{ antialias: true, alpha: true }});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000, 0); // komplett transparent
+renderer.setClearColor(0x000000, 0);
 document.body.appendChild(renderer.domElement);
 
 // === Licht ===
@@ -54,13 +54,6 @@ const key = new THREE.DirectionalLight(0xffffff, 1.2);
 key.position.set(2000, 2000, 1600);
 scene.add(key);
 scene.add(new THREE.AmbientLight(0xffffff, 0.4));
-
-// === Palette ===
-const PAL_W = 1200, PAL_D = 800, PAL_H = 144;
-const palMat = new THREE.MeshPhongMaterial({{ color: 0xc69c6d }});
-const pallet = new THREE.Mesh(new THREE.BoxGeometry(PAL_W, PAL_H, PAL_D), palMat);
-pallet.position.y = PAL_H / 2;
-scene.add(pallet);
 
 // === Coil ===
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
@@ -72,7 +65,7 @@ shape.holes.push(hole);
 
 const geom = new THREE.ExtrudeGeometry(shape, {{ depth: WIDTH, bevelEnabled: false, curveSegments: 128 }});
 geom.rotateZ(Math.PI / 2);
-geom.translate(0, PAL_H + RAD, 0);
+geom.translate(0, RAD, 0);
 geom.computeVertexNormals();
 
 const mat = new THREE.MeshPhongMaterial({{
@@ -91,14 +84,8 @@ controls.dampingFactor = 0.06;
 controls.enablePan = false;
 
 // === Kamera-Autoanpassung ===
-function frameAll() {{
-  const group = new THREE.Group();
-  group.add(coil.clone());
-  group.add(pallet.clone());
-  scene.add(group);
-  const box = new THREE.Box3().setFromObject(group);
-  scene.remove(group);
-
+function frameCoil() {{
+  const box = new THREE.Box3().setFromObject(coil);
   const size = new THREE.Vector3(); box.getSize(size);
   const center = new THREE.Vector3(); box.getCenter(center);
   const fov = camera.fov * Math.PI / 180;
@@ -113,7 +100,7 @@ function frameAll() {{
   controls.maxDistance = dist * 3.0;
   controls.update();
 }}
-frameAll();
+frameCoil();
 
 // === Render ===
 function animate() {{
