@@ -1,21 +1,21 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="3D Testbox", layout="wide")
+st.set_page_config(page_title="3D Sichtbarkeitstest", layout="wide")
 
-st.title("📦 3D-Testbox (sichtbarer Quader)")
-st.caption("Nur eine Box im Raum – kein Raum, kein Coil. 3D-Ansicht mit Maus drehbar.")
+st.title("👀 Sichtbarkeitstest – Kleine Box im 3D-Raum")
+st.caption("Kleine Box, stark beleuchtet, Kamera sehr nah. Sollte IMMER sichtbar sein.")
 
 threejs_html = """
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8">
 <style>
   html, body {
     margin: 0;
     overflow: hidden;
-    background: #484852; /* neutral dunkel */
+    background: #202020;
     width: 100%;
     height: 100%;
   }
@@ -27,45 +27,36 @@ threejs_html = """
 <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/js/controls/OrbitControls.js"></script>
 
 <script>
-// === Szene, Kamera, Renderer ===
+// --- Szene ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x484852);
+scene.background = new THREE.Color(0x202020);
 
-const camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 1, 10000);
+// --- Kamera ---
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 10000);
+camera.position.set(3, 2, 3);
+
+// --- Renderer ---
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// === Licht ===
-const light = new THREE.DirectionalLight(0xffffff, 1.2);
-light.position.set(1000, 1000, 800);
-scene.add(light);
-scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+// --- Licht ---
+const light1 = new THREE.PointLight(0xffffff, 1.5);
+light1.position.set(5, 5, 5);
+scene.add(light1);
+scene.add(new THREE.AmbientLight(0xffffff, 0.3));
 
-// === 3D-Box ===
-const W=1200, H=200, D=800;
-const geometry = new THREE.BoxGeometry(W, H, D);
-const material = new THREE.MeshPhongMaterial({
-  color: 0x888888,
-  shininess: 100,
-  reflectivity: 0.5
-});
-const box = new THREE.Mesh(geometry, material);
-box.castShadow = true;
-box.receiveShadow = true;
-scene.add(box);
+// --- Testbox ---
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshPhongMaterial({color: 0x44aa88, shininess: 80});
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
 
-// === Kamera initial setzen ===
-camera.position.set(1800, 900, 1800);
-camera.lookAt(0,0,0);
-
-// === OrbitControls ===
+// --- OrbitControls ---
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enablePan = false;
 controls.enableDamping = true;
-controls.dampingFactor = 0.06;
 
-// === Render-Loop ===
+// --- Renderloop ---
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
@@ -73,9 +64,9 @@ function animate() {
 }
 animate();
 
-// === Resize ===
+// --- Resize ---
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
