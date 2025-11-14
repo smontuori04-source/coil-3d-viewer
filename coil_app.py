@@ -6,7 +6,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="3D Coil – Zuschnitt & Gewicht", layout="wide")
 
 # ==============================
-# 📥 Eingaben
+# 🤏 Eingaben
 # ==============================
 st.sidebar.title("🌀 Coil Parameter")
 
@@ -14,60 +14,85 @@ RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD = st.sidebar.number_input("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.number_input("Breite (mm)", 8, 600, 300, step=1)
 THK = st.sidebar.number_input("Bandstärke (mm)", 0.1, 5.0, 1.0, step=0.1)
-MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
+MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium", "Messing"], index=1)
 
-# Dichten g/cm³ → g/mm³
-rho_g_cm3 = {"Stahl": 7.85, "Kupfer": 8.96, "Aluminium": 2.70}
+# =================================
+# 📌 Material-Dichten (g/cm3 → g/mm3)
+# =================================
+rho_g_cm3 = {
+    "Stahl": 7.85,
+    "Kupfer": 8.96,
+    "Aluminium": 2.70,
+    "Messing": 8.50
+}
 rho_g_mm3 = rho_g_cm3[MATERIAL] / 1000.0
 
-# Coil-Farbe je Material (Basis)
+# ==============================
+# 🎨 Farbwerte (HEX)
+# ==============================
 color_map = {
-    "Stahl": "0x999999",
-    "Kupfer": "0xb87333",
-    "Aluminium": "0xd0d0d0"
+    "Stahl": 0x777777,
+    "Kupfer": 0xb87333,
+    "Aluminium": 0xe6e6e6,
+    "Messing": 0xd4af37
 }
-base_color = color_map[MATERIAL]
+base_hex = color_map[MATERIAL]
 
-# Gewicht & Länge
+# ==============================
+# 🌈 Funktion zur Farbabstufung
+# ==============================
+def shade_color(hex_color, factor):
+    r = (hex_color >> 16) & 255
+    g = (hex_color >> 8) & 255
+    b = hex_color & 255
+
+    r = max(0, min(255, int(r * factor)))
+    g = max(0, min(255, int(g * factor)))
+    b = max(0, min(255, int(b * factor)))
+
+    return (r << 16) + (g << 8) + b
+
+# ==============================
+# ⚖️ Gewichte
+# ==============================
 volume_mm3 = math.pi * (RAD**2 - RID**2) * WIDTH
-weight_g = volume_mm3 * rho_g_mm3
-weight_kg = weight_g / 1000.0
+weight_kg = (volume_mm3 * rho_g_mm3) / 1000.0
 kg_per_mm = weight_kg / WIDTH
-length_mm = math.pi * (RAD**2 - RID**2) / THK
-length_m = length_mm / 1000.0
+length_m = math.pi * (RAD**2 - RID**2) / THK / 1000.0
 
 def fmt(x): return f"{x:,.0f}".replace(",", " ")
 def fmt2(x): return f"{x:,.2f}".replace(",", " ")
 
-# Anzeige – kleinere Schrift
+# Sidebar-Ergebnisse
 st.sidebar.markdown("### 📊 Berechnete Werte")
 st.sidebar.markdown(
     f"""
-    <style>
-        .small-text p {{font-size:13px !important; line-height:1.2;}}
-    </style>
-    <div class="small-text">
-        <p><b>Gesamtgewicht:</b> {fmt(weight_kg)} kg</p>
-        <p><b>Gewicht/mm:</b> {fmt2(kg_per_mm)} kg/mm</p>
-        <p><b>Länge:</b> {fmt2(length_m)} m</p>
+    <div style="font-size:13px; line-height:1.3;">
+    <b>Gesamtgewicht:</b> {fmt(weight_kg)} kg<br>
+    <b>Gewicht/mm:</b> {fmt2(kg_per_mm)} kg/mm<br>
+    <b>Länge:</b> {fmt2(length_m)} m
     </div>
     """,
     unsafe_allow_html=True
 )
 
-# Zuschnittbreiten
+# ==============================
+# ✂️ Zuschnitte
+# ==============================
 st.sidebar.markdown("---")
 st.sidebar.subheader("✂️ Zuschnittbreiten (mm)")
-cuts_input = st.sidebar.text_input("Kommagetrennt (z. B. 100, 200, 250)", "100, 200, 250")
+cuts_input = st.sidebar.text_input("Kommagetrennt (z. B. 100, 200, 250)", "100, 60, 60, 20")
 
 cuts, cut_weights = [], []
+
 try:
     cuts = [float(x.strip()) for x in cuts_input.split(",") if x.strip()]
     cut_weights = [kg_per_mm * c for c in cuts]
-    rest_width = WIDTH - sum(cuts)
-    if rest_width > 0:
-        cuts.append(rest_width)
-        cut_weights.append(kg_per_mm * rest_width)
+
+    rest = WIDTH - sum(cuts)
+    if rest > 0:
+        cuts.append(rest)
+        cut_weights.append(kg_per_mm * rest)
 
     df = pd.DataFrame({
         "Zuschnitt": [f"{i+1}" for i in range(len(cuts))],
@@ -75,220 +100,153 @@ try:
         "Gewicht (kg)": [round(w, 2) for w in cut_weights]
     })
     st.sidebar.dataframe(df, hide_index=True, use_container_width=True)
-except Exception as e:
-    st.sidebar.error(f"Eingabefehler: {e}")
+except:
+    st.sidebar.error("Fehlerhafte Eingabe bei Zuschnitten.")
+
+# ==============================
+# 🎨 HTML-Bausteine für Licht + Szene
+# ==============================
+LIGHT_JS = """
+// --- Perfekte Beleuchtung ---
+const key = new THREE.DirectionalLight(0xffffff, 1.35);
+key.position.set(1500, 1200, 800);
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0xfff8e5, 0.75);
+fill.position.set(-1000, 600, -500);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight(0xffffff, 0.55);
+rim.position.set(0, -400, 900);
+scene.add(rim);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+"""
 
 # ==============================
 # 📐 Layout
 # ==============================
-col_left, col_right = st.columns([0.55, 0.45])
+col_left, col_right = st.columns([0.45, 0.55])
 
+
+# ============================================
+# 🧲 3D MASTERCOIL
+# ============================================
 with col_right:
-    st.title("🧲 3D-Coils (hell & liegend)")
+    st.markdown("## 🧲 3D-Coils (hell & liegend)")
+    st.markdown("### 🧩 Mastercoil")
 
-# ---------- Mastercoil ----------
-st.markdown("### 🧩 Mastercoil")
-master_html = f"""
-<html><body style="margin:0; background:white; display:flex; justify-content:center; align-items:center;">
-<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-<script>
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(50, 1.1, 1, 20000);
-const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
-renderer.setClearColor(0xffffff, 1);
-renderer.setSize(window.innerWidth * 0.5, 450);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
+    master_html = f"""
+    <html><body style='margin:0; background:white;'>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 
-// Licht (rundum + Schatten)
-const key = new THREE.DirectionalLight(0xffffff, 1.5);
-key.position.set(1000, 800, 600);
-key.castShadow = true;
-key.shadow.mapSize.width = 2048;
-key.shadow.mapSize.height = 2048;
-scene.add(key);
+    <div id="c" style="width:100%; height:420px;"></div>
 
-const rim = new THREE.DirectionalLight(0xffffff, 0.8);
-rim.position.set(-800, 400, -600);
-scene.add(rim);
-
-const side = new THREE.PointLight(0xffffff, 0.6);
-side.position.set(0, 200, 1200);
-scene.add(side);
-
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-
-// Boden mit weichem Schatten
-const groundGeo = new THREE.PlaneGeometry(6000, 6000);
-const groundMat = new THREE.ShadowMaterial({{opacity: 0.2}});
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = 0;
-ground.receiveShadow = true;
-scene.add(ground);
-
-// Coil
-const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
-const shape = new THREE.Shape();
-shape.absarc(0,0,RAD,0,Math.PI*2,false);
-const hole = new THREE.Path();
-hole.absarc(0,0,RID,0,Math.PI*2,true);
-shape.holes.push(hole);
-
-const geom = new THREE.ExtrudeGeometry(shape, {{depth:WIDTH, bevelEnabled:false, curveSegments:128}});
-geom.rotateX(Math.PI/2);
-geom.translate(0, WIDTH/2 + 20, 0);  // etwas über Boden
-
-const mat = new THREE.MeshStandardMaterial({{
-    color: {base_color},
-    metalness: 0.9,
-    roughness: 0.35
-}});
-const coil = new THREE.Mesh(geom, mat);
-coil.castShadow = true;
-scene.add(coil);
-
-// Kamera mittig & leicht geneigt
-const box = new THREE.Box3().setFromObject(coil);
-const size = new THREE.Vector3(); box.getSize(size);
-const center = new THREE.Vector3(); box.getCenter(center);
-const maxDim = Math.max(size.x, size.y, size.z);
-const fov = camera.fov * Math.PI/180;
-let dist = (maxDim/2)/Math.tan(fov/2);
-dist *= 1.25;
-camera.position.set(center.x + dist*0.7, center.y + dist*0.35, center.z + dist*1.1);
-camera.lookAt(center);
-
-// Renderloop für Schatten
-function animate() {{
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
-}}
-animate();
-</script></body></html>
-"""
-components.html(master_html, height=450)
-
-
-# ---------- Zuschnitt-Coils ----------
-st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
-
-cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else "[]"
-
-# Farbtonvariation (Material bleibt korrekt!)
-base_hex = int(color_map[MATERIAL], 16)
-color_list = []
-for i in range(len(cuts)):
-    shade = max(base_hex - i * 0x202020, 0x111111)
-    color_list.append(shade)
-
-colors_js = ",".join([str(c) for c in color_list])
-
-cuts_html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8" />
-</head>
-<body style="margin:0; background:white; display:flex; justify-content:center; align-items:center;">
-
-<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
-
-<script>
-(function() {{
-
+    <script>
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
-
-    const camera = new THREE.PerspectiveCamera(55, 1.1, 1, 20000);
-    const renderer = new THREE.WebGLRenderer({{ antialias:true, alpha:true }});
+    const camera = new THREE.PerspectiveCamera(55, 1.9, 1, 20000);
+    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
     renderer.setClearColor(0xffffff, 1);
-    renderer.setSize(window.innerWidth * 0.50, 450);
-    document.body.appendChild(renderer.domElement);
+    renderer.setSize(window.innerWidth*0.52, 420);
+    document.getElementById("c").appendChild(renderer.domElement);
 
-    // Licht
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
-    key.position.set(1600, 1400, 900);
-    scene.add(key);
+    {LIGHT_JS}
 
-    const fill = new THREE.DirectionalLight(0xffffff, 0.8);
-    fill.position.set(-1000, 800, -700);
-    scene.add(fill);
+    // COIL GEOMETRIE
+    const shape = new THREE.Shape();
+    shape.absarc(0,0,{RAD},0,Math.PI*2,false);
+    const hole = new THREE.Path();
+    hole.absarc(0,0,{RID},0,Math.PI*2,true);
+    shape.holes.push(hole);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+    const geom = new THREE.ExtrudeGeometry(shape, {{depth:{WIDTH}, bevelEnabled:false}});
+    geom.rotateX(Math.PI/2);
+    geom.translate(0,{WIDTH}/2,0);
 
-    const RID = {RID};
-    const RAD = {RAD};
-    const cuts = [{cuts_js_list}];
-    const colors = [{colors_js}];
+    const mat = new THREE.MeshStandardMaterial({{
+        color:{base_hex},
+        metalness:1.0,
+        roughness:0.22
+    }});
+    const coil = new THREE.Mesh(geom, mat);
+    scene.add(coil);
 
-    const spacing = 10;
-    let heightOffset = 0;
-
-    for (let i = 0; i < cuts.length; i++) {{
-        const cutWidth = cuts[i];
-
-        const shape = new THREE.Shape();
-        shape.absarc(0, 0, RAD, 0, Math.PI * 2, false);
-
-        const hole = new THREE.Path();
-        hole.absarc(0, 0, RID, 0, Math.PI * 2, true);
-        shape.holes.push(hole);
-
-        const geom = new THREE.ExtrudeGeometry(shape, {{
-            depth: cutWidth,
-            bevelEnabled: false,
-            curveSegments: 128
-        }});
-
-        geom.rotateX(Math.PI / 2);
-        geom.translate(0, heightOffset + cutWidth / 2 + spacing, 0);
-
-        const mat = new THREE.MeshStandardMaterial({{
-            color: colors[i],
-            metalness: 1.0,
-            roughness: 0.25
-        }});
-
-        const part = new THREE.Mesh(geom, mat);
-        scene.add(part);
-
-        if (i < cuts.length - 1) {{
-            const lineGeo = new THREE.PlaneGeometry(RAD * 2.2, 2);
-            const lineMat = new THREE.MeshBasicMaterial({{ color: 0xff0000 }});
-            const line = new THREE.Mesh(lineGeo, lineMat);
-            line.rotateX(Math.PI / 2);
-            line.position.set(0, heightOffset + cutWidth + spacing + 1, 0);
-            scene.add(line);
-        }}
-
-        heightOffset += cutWidth + spacing;
-    }}
-
-    // Kamera
-    const box = new THREE.Box3().setFromObject(scene);
-    const size = new THREE.Vector3(); 
-    box.getSize(size);
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-
-    const maxDim = Math.max(size.x, size.y, size.z);
-    const fov = camera.fov * Math.PI / 180;
-
-    let dist = (maxDim / 2) / Math.tan(fov / 2);
-    dist *= 1.2;
-
-    camera.position.set(center.x + dist * 0.7, center.y + dist * 0.25, center.z + dist);
+    // Kamera zentrieren
+    const box = new THREE.Box3().setFromObject(coil);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const dist = size.length()*0.9;
+    camera.position.set(center.x + dist, center.y + dist*0.25, center.z + dist);
     camera.lookAt(center);
 
     renderer.render(scene, camera);
+    </script></body></html>
+    """
+    components.html(master_html, height=420)
 
-}})();
-</script>
 
-</body>
-</html>
-"""
+# ============================================
+# ✂️ 3D ZUSCHNITTE – GESTAPELT
+# ============================================
+    st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
 
-components.html(cuts_html, height=450)
+    colors_js = ",".join([str(shade_color(base_hex, 1 - i*0.12)) for i in range(len(cuts))])
+    cuts_js = ",".join([str(c) for c in cuts])
+
+    cuts_html = f"""
+    <html><body style='margin:0; background:white;'>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
+
+    <div id="cut" style="width:100%; height:420px;"></div>
+
+    <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, 1.9, 1, 20000);
+    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setClearColor(0xffffff, 1);
+    renderer.setSize(window.innerWidth*0.52, 420);
+    document.getElementById("cut").appendChild(renderer.domElement);
+
+    {LIGHT_JS}
+
+    const RID = {RID}, RAD = {RAD}, TOTAL = {WIDTH};
+    const cuts = [{cuts_js}];
+    const cols = [{colors_js}];
+
+    let offset = 0;
+    for (let i=0; i<cuts.length; i++) {{
+        const w = cuts[i];
+
+        const shape = new THREE.Shape();
+        shape.absarc(0,0,RAD,0,Math.PI*2,false);
+        const hole = new THREE.Path();
+        hole.absarc(0,0,RID,0,Math.PI*2,true);
+        shape.holes.push(hole);
+
+        const g = new THREE.ExtrudeGeometry(shape, {{depth:w, bevelEnabled:false}});
+        g.rotateX(Math.PI/2);
+        g.translate(0, offset + w/2, 0);
+
+        const m = new THREE.MeshStandardMaterial({{
+            color: cols[i],
+            metalness: 1.0,
+            roughness: 0.22
+        }});
+        const part = new THREE.Mesh(g, m);
+        scene.add(part);
+
+        offset += w + 3; // Abstand zwischen Zuschnitten
+    }}
+
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const dist = size.length()*0.85;
+    camera.position.set(center.x + dist, center.y + dist*0.22, center.z + dist);
+    camera.lookAt(center);
+
+    renderer.render(scene, camera);
+    </script></body></html>
+    """
+
+    components.html(cuts_html, height=420)
