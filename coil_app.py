@@ -97,20 +97,38 @@ const camera = new THREE.PerspectiveCamera(50, 1.1, 1, 20000);
 const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
 renderer.setClearColor(0xffffff, 1);
 renderer.setSize(window.innerWidth * 0.5, 450);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// Licht (weicher & rundum)
+// Licht (rundum + Schatten)
 const key = new THREE.DirectionalLight(0xffffff, 1.5);
 key.position.set(1000, 800, 600);
+key.castShadow = true;
+key.shadow.mapSize.width = 2048;
+key.shadow.mapSize.height = 2048;
 scene.add(key);
+
 const rim = new THREE.DirectionalLight(0xffffff, 0.8);
 rim.position.set(-800, 400, -600);
 scene.add(rim);
+
 const side = new THREE.PointLight(0xffffff, 0.6);
 side.position.set(0, 200, 1200);
 scene.add(side);
+
 scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 
+// Boden mit weichem Schatten
+const groundGeo = new THREE.PlaneGeometry(6000, 6000);
+const groundMat = new THREE.ShadowMaterial({{opacity: 0.2}});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = 0;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Coil
 const RID = {RID}, RAD = {RAD}, WIDTH = {WIDTH};
 const shape = new THREE.Shape();
 shape.absarc(0,0,RAD,0,Math.PI*2,false);
@@ -120,7 +138,7 @@ shape.holes.push(hole);
 
 const geom = new THREE.ExtrudeGeometry(shape, {{depth:WIDTH, bevelEnabled:false, curveSegments:128}});
 geom.rotateX(Math.PI/2);
-geom.translate(0, WIDTH/2, 0);
+geom.translate(0, WIDTH/2 + 20, 0);  // etwas über Boden
 
 const mat = new THREE.MeshStandardMaterial({{
     color: {base_color},
@@ -128,6 +146,7 @@ const mat = new THREE.MeshStandardMaterial({{
     roughness: 0.35
 }});
 const coil = new THREE.Mesh(geom, mat);
+coil.castShadow = true;
 scene.add(coil);
 
 // Kamera mittig & leicht geneigt
@@ -141,15 +160,20 @@ dist *= 1.25;
 camera.position.set(center.x + dist*0.7, center.y + dist*0.35, center.z + dist*1.1);
 camera.lookAt(center);
 
-renderer.render(scene, camera);
+// Renderloop für Schatten
+function animate() {{
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}}
+animate();
 </script></body></html>
 """
 components.html(master_html, height=450)
 
+
 # ---------- Zuschnitt-Coils ----------
 st.markdown("### ✂️ Coil mit Zuschnitten (gestapelt)")
 cuts_js_list = ",".join([str(c) for c in cuts]) if cuts else "[]"
-cuts_count = len(cuts)
 
 cuts_html = f"""
 <html><body style="margin:0; background:white; display:flex; justify-content:center; align-items:center;">
@@ -160,19 +184,36 @@ const camera = new THREE.PerspectiveCamera(50, 1.1, 1, 20000);
 const renderer = new THREE.WebGLRenderer({{antialias:true, alpha:true}});
 renderer.setClearColor(0xffffff, 1);
 renderer.setSize(window.innerWidth * 0.5, 450);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// Licht identisch zum Mastercoil
+// Licht identisch mit Schatten
 const key = new THREE.DirectionalLight(0xffffff, 1.5);
 key.position.set(1000, 800, 600);
+key.castShadow = true;
+key.shadow.mapSize.width = 2048;
+key.shadow.mapSize.height = 2048;
 scene.add(key);
+
 const rim = new THREE.DirectionalLight(0xffffff, 0.8);
 rim.position.set(-800, 400, -600);
 scene.add(rim);
+
 const side = new THREE.PointLight(0xffffff, 0.6);
 side.position.set(0, 200, 1200);
 scene.add(side);
+
 scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+// Boden
+const groundGeo = new THREE.PlaneGeometry(6000, 6000);
+const groundMat = new THREE.ShadowMaterial({{opacity: 0.2}});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = 0;
+ground.receiveShadow = true;
+scene.add(ground);
 
 const RID = {RID}, RAD = {RAD}, TOTAL_WIDTH = {WIDTH};
 const cuts = [{cuts_js_list}];
@@ -198,13 +239,14 @@ for (let i = 0; i < cuts.length; i++) {{
 
     const geom = new THREE.ExtrudeGeometry(shape, {{depth:cutWidth, bevelEnabled:false, curveSegments:128}});
     geom.rotateX(Math.PI/2);
-    geom.translate(0, heightOffset + cutWidth/2, 0);
+    geom.translate(0, heightOffset + cutWidth/2 + 20, 0);
     const mat = new THREE.MeshStandardMaterial({{
         color: shadeColor(baseColor, i * 0.08),
         metalness: 0.9,
         roughness: 0.35
     }});
     const part = new THREE.Mesh(geom, mat);
+    part.castShadow = true;
     scene.add(part);
 
     if (i < cuts.length - 1) {{
@@ -212,7 +254,7 @@ for (let i = 0; i < cuts.length; i++) {{
         const lineMat = new THREE.MeshBasicMaterial({{color: 0xff0000}});
         const line = new THREE.Mesh(lineGeo, lineMat);
         line.rotateX(Math.PI/2);
-        line.position.set(0, heightOffset + cutWidth + 1, 0);
+        line.position.set(0, heightOffset + cutWidth + 1 + 20, 0);
         scene.add(line);
     }}
     heightOffset += cutWidth;
@@ -228,8 +270,11 @@ dist *= 1.25;
 camera.position.set(center.x + dist*0.7, center.y + dist*0.35, center.z + dist*1.1);
 camera.lookAt(center);
 
-renderer.render(scene, camera);
+function animate() {{
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}}
+animate();
 </script></body></html>
 """
 components.html(cuts_html, height=450)
-
