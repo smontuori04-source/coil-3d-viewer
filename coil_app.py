@@ -13,7 +13,7 @@ st.sidebar.title("🌀 Coil Parameter")
 RID = st.sidebar.radio("Innenradius (mm)", [150, 300, 400, 500], index=1)
 RAD = st.sidebar.number_input("Außenradius (mm)", 600, 1600, 800, step=10)
 WIDTH = st.sidebar.number_input("Breite (mm)", 8, 600, 300, step=1)
-THK = st.sidebar.number_input("Bandstärke (mm)", 0.1, 5.0, 1.0, step=0.1)
+THK = st.sidebar.number_input("Bandstärke (mm)", 0.1, 5.0, 1.0, step=0.05)
 MATERIAL = st.sidebar.selectbox("Material", ["Stahl", "Kupfer", "Aluminium"], index=0)
 
 # Dichten g/cm³ → g/mm³
